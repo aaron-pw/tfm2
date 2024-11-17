@@ -33,6 +33,9 @@
           <span class="customer-info">
             {{ queue.name }} ({{ queue.contact }})
           </span>
+          <span class="time-elapsed-tag">
+            {{ getTimeElapsed(queue.timestamp) }}
+          </span>
           <button class="delete-button" @click.stop="onRemove(index)">
             <span class="material-icons">remove_circle</span>
           </button>
@@ -65,12 +68,23 @@ export default {
       waitList: [],
       showViewModal: false,
       selectedCustomer: null,
-      showRemoveNotification: false
+      showRemoveNotification: false,
+      timer: null,
     };
   },
   computed: {
     showAddModal() {
       return this.showModal;
+    }
+  },
+  mounted() {
+    this.timer = setInterval(() => {
+      this.$forceUpdate();
+    }, 1000);
+  },
+  beforeDestroy() {
+    if (this.timer) {
+      clearInterval(this.timer);
     }
   },
   methods: {
@@ -102,6 +116,28 @@ export default {
     },
     getCustomerTypeShort(type) {
       return type.charAt(0);
+    },
+    getTimeElapsed(timestamp) {
+      if (!timestamp) return '';
+      
+      const added = new Date(timestamp);
+      const now = new Date();
+      const diffInSeconds = Math.floor((now - added) / 1000);
+      
+      const hours = Math.floor(diffInSeconds / 3600);
+      const minutes = Math.floor((diffInSeconds % 3600) / 60);
+      const seconds = diffInSeconds % 60;
+      
+      let timeString = '';
+      if (hours > 0) {
+        timeString += `${hours}h `;
+      }
+      if (minutes > 0 || hours > 0) {
+        timeString += `${minutes}m `;
+      }
+      timeString += `${seconds}s`;
+      
+      return timeString;
     },
   },
 };
@@ -239,5 +275,15 @@ li {
 
 li:last-child {
   margin-bottom: 0;
+}
+
+.time-elapsed-tag {
+  background-color: #f0f0f0;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  color: #666;
+  margin-left: auto;
+  margin-right: 8px;
 }
 </style>

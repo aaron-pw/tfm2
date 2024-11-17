@@ -9,7 +9,7 @@
         <div class="modal-body">
           <div class="input-wrapper">
             <label>Time Added:</label>
-            <div class="readonly-display">{{ customer.timestamp || 'Not available' }}</div>
+            <div class="readonly-display">{{ formatTimestamp(customer.timestamp) }}</div>
           </div>
           <div class="input-wrapper">
             <label for="customerType">Customer Type:</label>
@@ -83,6 +83,17 @@ export default {
     }
   },
   methods: {
+    formatTimestamp(timestamp) {
+      if (!timestamp) return 'Not available';
+      
+      const date = new Date(timestamp);
+      return date.toLocaleString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+      });
+    },
     saveNotes() {
       this.$emit('update-notes', this.tempNotes);
       this.$emit('close');
