@@ -41,9 +41,9 @@
 </template>
 
 <script>
-import AddCustomerModal from './AddCustomerModal.vue'
-import ViewCustomerModal from './ViewCustomerModal.vue'
-import SaveNotification from './SaveNotification.vue'
+import AddCustomerModal from './modals/AddCustomerModal.vue'
+import ViewCustomerModal from './modals/ViewCustomerModal.vue'
+import SaveNotification from './modals/SaveNotification.vue'
 
 export default {
   name: "WaitList",
