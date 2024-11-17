@@ -223,7 +223,7 @@ input.error {
 .cancel {
   padding: 0.5rem 2rem;
   min-width: 150px;
-  background-color: #f5f5f5;
+  background-color: #bebebe;
   border: none;
   border-radius: 4px;
   color: #333;
@@ -234,7 +234,8 @@ input.error {
 }
 
 .cancel:hover {
-  background-color: #e0e0e0;
+  background: #666;
+  color: white;
 }
 
 .add-button {

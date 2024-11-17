@@ -211,28 +211,34 @@ export default {
 }
 
 .action {
-  padding: 10px 20px;
-  text-transform: uppercase;
-  border: 2px solid #d8f0fe;
-  background: #0d54ff;
+  background-color: #0d54ff;
   color: white;
-  font-weight: bold;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
   cursor: pointer;
-}
-
-.cancel {
-  padding: 10px 20px;
-  text-transform: uppercase;
-  border: 2px solid #666;
-  background: white;
-  color: #666;
   font-weight: bold;
-  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .action:hover {
   background: white;
-  color: #0c80c4;
+  color: #0d54ff;
+}
+
+.cancel {
+  padding: 0.5rem 2rem;
+  min-width: 150px;
+  background-color: #bebebe;
+  border: none;
+  border-radius: 4px;
+  color: #333;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.2s;
+  text-align: center;
 }
 
 .cancel:hover {
