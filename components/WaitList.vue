@@ -1,50 +1,82 @@
 <template>
-  <div class="container">
-    <Head>
-      <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    </Head>
-    <SaveNotification 
-      :show="showRemoveNotification" 
-      message="✕ Customer removed from queue" 
-      type="error"
+  <div>
+    <AppHeader 
+      @openModal="showModal = true"
+      @openStaffModal="showStaffModal = true" 
     />
-    <AddCustomerModal 
-      :is-open="showAddModal" 
-      @close="$emit('closeModal')"
-      @add-customer="addCustomer"
-    />
-    <ViewCustomerModal
-      v-if="selectedCustomer"
-      :is-open="showViewModal"
-      :customer="selectedCustomer"
-      @close="showViewModal = false"
-      @update-notes="updateCustomerNotes"
-    />
-    <h2 class="wait-list-header">In-Store Queue</h2>
-    <div v-if="waitList.length === 0" class="empty-queue">
-      No customers in queue
-    </div>
-    <ul v-else>
-      <li v-for="(queue, index) in waitList" :key="index">
-        <div class="customer-row" @click="showCustomerNotes(queue)">
-          <span class="customer-type-tag" :class="queue.customerType.toLowerCase()">
-            {{ getCustomerTypeShort(queue.customerType) }}
-          </span>
-          <span class="category-tag" :class="getCategoryClass(queue.category)">
-            {{ getCategoryShort(queue.category) }}
-          </span>
-          <span class="customer-info">
-            {{ queue.name }} ({{ queue.contact }})
-          </span>
-          <span class="time-elapsed-tag">
-            {{ getTimeElapsed(queue.timestamp) }}
-          </span>
-          <button class="delete-button" @click.stop="onRemove(index)">
-            <span class="material-icons">remove_circle</span>
-          </button>
+    <div class="container">
+      <SaveNotification 
+        :show="showRemoveNotification" 
+        message="✕ Customer removed from queue" 
+        type="error"
+      />
+      <AddCustomerModal 
+        :is-open="showModal" 
+        @close="showModal = false"
+        @add-customer="addCustomer"
+      />
+      <ViewCustomerModal
+        v-if="selectedCustomer"
+        :is-open="showViewModal"
+        :customer="selectedCustomer"
+        :available-staff="staffList"
+        @close="showViewModal = false"
+        @update-notes="updateCustomerNotes"
+        @assign-staff="assignStaffToCustomer"
+      />
+      <ManageStaffModal
+        :is-open="showStaffModal"
+        :staff-list="staffList"
+        @close="showStaffModal = false"
+        @add-staff="addStaffMember"
+        @remove-staff="removeStaffMember"
+      />
+      <div class="header-section">
+        <div class="left-section">
+          <h2 class="wait-list-header">In-Store Queue</h2>
+          <DevTools @add-test-data="addTestCustomers" />
         </div>
-      </li>
-    </ul>
+        <button @click="toggleContacts" class="toggle-button">
+          <span class="material-icons">{{ hideContacts ? 'visibility_off' : 'visibility' }}</span>
+          {{ hideContacts ? 'Show Contacts' : 'Hide Contacts' }}
+        </button>
+      </div>
+      <div v-if="waitList.length === 0" class="empty-queue">
+        No customers in queue
+      </div>
+      <ul v-else>
+        <li v-for="(queue, index) in waitList" :key="index">
+          <div class="customer-row" @click="showCustomerNotes(queue)">
+            <span 
+              class="customer-type-tag" 
+              :class="queue.customerType.toLowerCase()"
+              :title="queue.customerType"
+            >
+              {{ getCustomerTypeShort(queue.customerType) }}
+            </span>
+            <span 
+              class="category-tag" 
+              :class="getCategoryClass(queue.category)"
+              :title="queue.category"
+            >
+              {{ getCategoryShort(queue.category) }}
+            </span>
+            <span class="customer-info">
+              {{ queue.name }}{{ !hideContacts ? ` (${queue.contact})` : '' }}
+              <span v-if="queue.assignedStaff" class="assigned-staff">
+                • Assigned to {{ queue.assignedStaff }}
+              </span>
+            </span>
+            <span class="time-elapsed-tag">
+              {{ getTimeElapsed(queue.timestamp) }}
+            </span>
+            <button class="delete-button" @click.stop="onRemove(index)">
+              <span class="material-icons">remove_circle</span>
+            </button>
+          </div>
+        </li>
+      </ul>
+    </div>
   </div>
 </template>
 
@@ -52,33 +84,31 @@
 import AddCustomerModal from './modals/AddCustomerModal.vue'
 import ViewCustomerModal from './modals/ViewCustomerModal.vue'
 import SaveNotification from './SaveNotification.vue'
+import AppHeader from './AppHeader.vue'
+import ManageStaffModal from './modals/ManageStaffModal.vue'
+import DevTools from './dev/DevTools.vue'
 
 export default {
   name: "WaitList",
   components: {
     AddCustomerModal,
     ViewCustomerModal,
-    SaveNotification
-  },
-  props: {
-    showModal: {
-      type: Boolean,
-      default: false
-    }
+    SaveNotification,
+    AppHeader,
+    ManageStaffModal,
+    DevTools
   },
   data() {
     return {
       waitList: [],
+      showModal: false,
       showViewModal: false,
+      showStaffModal: false,
       selectedCustomer: null,
       showRemoveNotification: false,
-      timer: null,
+      staffList: [],
+      hideContacts: false
     };
-  },
-  computed: {
-    showAddModal() {
-      return this.showModal;
-    }
   },
   mounted() {
     this.timer = setInterval(() => {
@@ -92,8 +122,11 @@ export default {
   },
   methods: {
     addCustomer(customer) {
-      this.waitList.push(customer);
-      this.$emit('closeModal');
+      this.waitList.push({
+        ...customer,
+        timestamp: new Date().toISOString()
+      })
+      this.showModal = false
     },
     showCustomerNotes(customer) {
       this.selectedCustomer = customer;
@@ -159,16 +192,40 @@ export default {
         .replace(/\s+/g, '-')
         || '';
     },
+    addStaffMember(staff) {
+      this.staffList.push(staff)
+    },
+    removeStaffMember(index) {
+      this.staffList.splice(index, 1)
+    },
+    assignStaffToCustomer(staffName) {
+      const customerIndex = this.waitList.findIndex(c => c === this.selectedCustomer)
+      if (customerIndex !== -1) {
+        this.waitList[customerIndex] = {
+          ...this.waitList[customerIndex],
+          assignedStaff: staffName
+        }
+      }
+    },
+    toggleContacts() {
+      this.hideContacts = !this.hideContacts;
+    },
+    addTestCustomers(customers) {
+      this.waitList.push(...customers);
+    }
   },
 };
 </script>
 
-<style scoped>
-:global(body) {
+<style>
+/* Global styles (no scoped) */
+body {
   margin: 0;
   overflow: hidden; /* Prevents browser scrollbar */
 }
+</style>
 
+<style scoped>
 .container {
   max-width: 800px;
   margin: 0 auto;
@@ -177,21 +234,20 @@ export default {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* Prevents container scrollbar */
+  overflow: hidden;
 }
 
 .wait-list-header {
   font-weight: bold;
   font-size: 1.5rem;
-  margin-bottom: 2rem;
-  margin-top: 0.5rem;
+  margin: 0;
 }
 
 ul {
   list-style: none;
-  padding: 0 1rem 0 0;
+  padding: 0;
   margin: 0;
-  overflow-y: auto; /* Keeps customer list scrollbar */
+  overflow-y: auto;
   flex: 1;
   max-height: calc(100vh - 100px);
 }
@@ -217,11 +273,12 @@ ul::-webkit-scrollbar-thumb:hover {
 .customer-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 8px;
+  padding: 8px 1rem;
   cursor: pointer;
   transition: background-color 0.2s;
   gap: 8px;
+  width: calc(100% - 2rem);
+  margin: 0 auto;
 }
 
 .customer-row:hover {
@@ -262,6 +319,10 @@ ul::-webkit-scrollbar-thumb:hover {
   color: #666;
   font-style: italic;
   margin-top: 1rem;
+}
+
+.customer-type-tag, .category-tag {
+  cursor: help;
 }
 
 .customer-type-tag {
@@ -344,5 +405,43 @@ li:last-child {
   color: #666;
   margin-left: auto;
   margin-right: 8px;
+}
+
+.assigned-staff {
+  color: #666;
+  font-size: 0.9em;
+  font-style: italic;
+}
+
+.header-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  margin-top: 0.5rem;
+  padding: 0 1rem;
+}
+
+.toggle-button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px;
+  background-color: #f0f0f0;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  height: fit-content;
+}
+
+.toggle-button:hover {
+  background-color: #e0e0e0;
+}
+
+.toggle-button .material-icons {
+  font-size: 1.25rem;
+  display: flex;
+  align-items: center;
 }
 </style>

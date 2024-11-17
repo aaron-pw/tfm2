@@ -5,6 +5,9 @@
       <div class="modal-content">
         <div class="modal-header">
           <h2>View Customer</h2>
+          <button @click="$emit('close')" class="close-button">
+            <span class="material-icons">close</span>
+          </button>
         </div>
         <div class="modal-body">
           <div class="input-wrapper">
@@ -24,22 +27,34 @@
             <div class="readonly-display">{{ customer.name }}</div>
           </div>
           <div class="input-wrapper">
-            <label for="contact">Contact Number:</label>
+            <label>Contact Number:</label>
             <div class="readonly-display">{{ customer.contact }}</div>
           </div>
           <div class="input-wrapper">
-            <label for="notes">Customer Notes:</label>
-            <textarea 
-              v-model="tempNotes" 
-              id="notes"
-              rows="3"
-              class="editable-notes"
-            ></textarea>
+            <label>Assigned Staff:</label>
+            <select 
+              v-model="selectedStaff" 
+              @change="assignStaff"
+              class="staff-select"
+            >
+              <option value="">Unassigned</option>
+              <option 
+                v-for="staff in availableStaff" 
+                :key="staff.name" 
+                :value="staff.name"
+              >
+                {{ staff.name }}
+              </option>
+            </select>
           </div>
-          <div class="button-group">
-            <button class="action" @click="saveNotes">Save Notes</button>
-            <div class="spacer"></div>
-            <button class="cancel" type="button" @click="closeModal">Close</button>
+          <div class="input-wrapper">
+            <label>Notes:</label>
+            <textarea
+              v-model="notes"
+              @input="updateNotes"
+              placeholder="Add notes here..."
+              rows="3"
+            ></textarea>
           </div>
         </div>
       </div>
@@ -48,13 +63,7 @@
 </template>
 
 <script>
-import SaveNotification from '../SaveNotification.vue'
-
 export default {
-  name: "ViewCustomerModal",
-  components: {
-    SaveNotification
-  },
   props: {
     isOpen: {
       type: Boolean,
@@ -63,56 +72,53 @@ export default {
     customer: {
       type: Object,
       required: true,
-      default: () => ({
-        name: '',
-        contact: '',
-        notes: '',
-        customerType: '',
-        timestamp: ''
-      })
+      default: () => ({})
+    },
+    availableStaff: {
+      type: Array,
+      default: () => []
     }
   },
   data() {
     return {
-      tempNotes: '',
-      showNotification: false
+      notes: '',
+      showNotification: false,
+      selectedStaff: ''
     }
   },
   watch: {
     customer: {
       immediate: true,
       handler(newCustomer) {
-        this.tempNotes = newCustomer.notes;
+        this.notes = newCustomer.notes || ''
+        this.selectedStaff = newCustomer.assignedStaff || ''
       }
     }
   },
   methods: {
+    updateNotes() {
+      this.$emit('update-notes', this.notes)
+      this.showNotification = true
+      setTimeout(() => {
+        this.showNotification = false
+      }, 1500)
+    },
+    assignStaff() {
+      this.$emit('assign-staff', this.selectedStaff)
+    },
     formatTimestamp(timestamp) {
-      if (!timestamp) return 'Not available';
+      if (!timestamp) return 'Not available'
       
-      const date = new Date(timestamp);
+      const date = new Date(timestamp)
       return date.toLocaleString('en-US', {
-        hour: 'numeric',
+        hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
         hour12: true
-      });
-    },
-    saveNotes() {
-      this.$emit('update-notes', this.tempNotes);
-      this.$emit('close');
-      this.showNotification = true;
-      setTimeout(() => {
-        this.showNotification = false;
-      }, 1500);
-      this.closeModal();
-    },
-    closeModal() {
-      this.tempNotes = this.customer.notes;
-      this.$emit('close');
+      })
     }
   }
-};
+}
 </script>
 
 <style scoped>
@@ -231,5 +237,19 @@ export default {
 
 .spacer {
   flex-grow: 1;
+}
+
+.staff-select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+  background-color: white;
+}
+
+.staff-select:focus {
+  outline: none;
+  border-color: #0d54ff;
 }
 </style>
