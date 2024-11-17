@@ -5,14 +5,8 @@
   </div>
 </template>
 
-<script>
-export default {
-  data() {
-    return {
-      showModal: false
-    }
-  }
-}
+<script setup>
+const showModal = ref(false)
 </script>
 
 <style scoped>
