@@ -9,6 +9,26 @@
         <div class="modal-body">
           <form @submit.prevent="onSubmit">
             <div class="input-wrapper">
+              <label for="category">Queue Category:</label>
+              <select 
+                v-model="category" 
+                id="category" 
+                name="category"
+                :class="{ 'error': showError && !category }"
+              >
+                <option value="">Select queue category</option>
+                <option value="Mobiles & Tablets">Mobiles & Tablets</option>
+                <option value="Pre-Paid">Pre-Paid</option>
+                <option value="Internet">Internet</option>
+                <option value="Accessories">Accessories</option>
+                <option value="Account Help">Account Help</option>
+                <option value="Tech Help">Tech Help</option>
+              </select>
+              <span class="error-message" v-if="showError && !category">
+                Please select a queue category
+              </span>
+            </div>
+            <div class="input-wrapper">
               <label for="customerType">Customer Type:</label>
               <select 
                 v-model="customerType" 
@@ -91,13 +111,14 @@ export default {
       contact: "",
       notes: "",
       customerType: "",
+      category: "",
       showError: false,
       showNotification: false
     };
   },
   methods: {
     onSubmit() {
-      if (!this.customer || !this.contact || !this.customerType) {
+      if (!this.customer || !this.contact || !this.customerType || !this.category) {
         this.showError = true;
         return;
       }
@@ -107,6 +128,7 @@ export default {
         contact: this.contact,
         notes: this.notes,
         customerType: this.customerType,
+        category: this.category,
         timestamp: new Date().toISOString()
       });
       this.$emit('close');
@@ -121,6 +143,7 @@ export default {
       this.contact = "";
       this.notes = "";
       this.customerType = "";
+      this.category = "";
       this.showError = false;
       this.$emit('close');
     }

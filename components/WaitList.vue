@@ -30,6 +30,9 @@
           <span class="customer-type-tag" :class="queue.customerType.toLowerCase()">
             {{ getCustomerTypeShort(queue.customerType) }}
           </span>
+          <span class="category-tag" :class="getCategoryClass(queue.category)">
+            {{ getCategoryShort(queue.category) }}
+          </span>
           <span class="customer-info">
             {{ queue.name }} ({{ queue.contact }})
           </span>
@@ -138,6 +141,23 @@ export default {
       timeString += `${seconds}s`;
       
       return timeString;
+    },
+    getCategoryShort(category) {
+      const shortcuts = {
+        'Mobiles & Tablets': 'MOB',
+        'Pre-Paid': 'PRE',
+        'Internet': 'INT',
+        'Accessories': 'ACC',
+        'Account Help': 'ACNT',
+        'Tech Help': 'TECH'
+      };
+      return shortcuts[category] || category;
+    },
+    getCategoryClass(category) {
+      return category?.toLowerCase()
+        .replace(/&/g, 'and')
+        .replace(/\s+/g, '-')
+        || '';
     },
   },
 };
@@ -267,6 +287,45 @@ ul::-webkit-scrollbar-thumb:hover {
 .customer-type-tag.business {
   background-color: #81c784;
   color: #000;
+}
+
+.category-tag {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: bold;
+  margin-right: 8px;
+  text-align: center;
+}
+
+.category-tag.mobiles-and-tablets {
+  background-color: #e91e63;
+  color: white;
+}
+
+.category-tag.pre-paid {
+  background-color: #9c27b0;
+  color: white;
+}
+
+.category-tag.internet {
+  background-color: #2196f3;
+  color: white;
+}
+
+.category-tag.accessories {
+  background-color: #4caf50;
+  color: white;
+}
+
+.category-tag.account-help {
+  background-color: #ff9800;
+  color: white;
+}
+
+.category-tag.tech-help {
+  background-color: #795548;
+  color: white;
 }
 
 li {

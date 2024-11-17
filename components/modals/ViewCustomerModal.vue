@@ -12,11 +12,15 @@
             <div class="readonly-display">{{ formatTimestamp(customer.timestamp) }}</div>
           </div>
           <div class="input-wrapper">
-            <label for="customerType">Customer Type:</label>
+            <label>Queue Category:</label>
+            <div class="readonly-display">{{ customer.category }}</div>
+          </div>
+          <div class="input-wrapper">
+            <label>Customer Type:</label>
             <div class="readonly-display">{{ customer.customerType }}</div>
           </div>
           <div class="input-wrapper">
-            <label for="customer">Customer Name:</label>
+            <label>Customer Name:</label>
             <div class="readonly-display">{{ customer.name }}</div>
           </div>
           <div class="input-wrapper">
