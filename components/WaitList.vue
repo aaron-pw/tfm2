@@ -43,36 +43,39 @@
         No customers in queue
       </div>
       <ul v-else>
-        <li v-for="(queue, index) in waitList" :key="index">
-          <div class="customer-row" @click="showCustomerNotes(queue)">
-            <span 
-              class="customer-type-tag" 
-              :class="queue.customerType.toLowerCase()"
-              :title="queue.customerType"
-            >
-              {{ getCustomerTypeShort(queue.customerType) }}
-            </span>
-            <span 
-              class="category-tag" 
-              :class="getCategoryClass(queue.category)"
-              :title="queue.category"
-            >
-              {{ getCategoryShort(queue.category) }}
-            </span>
-            <span class="customer-info">
-              {{ queue.name }}{{ !hideContacts ? ` (${queue.contact})` : '' }}
-              <span v-if="queue.assignedStaff" class="assigned-staff">
-                • Assigned to {{ queue.assignedStaff }}
+        <template v-for="(queue, index) in sortedWaitList" :key="index">
+          <li>
+            <div class="customer-row" @click="showCustomerNotes(queue)">
+              <span 
+                class="customer-type-tag" 
+                :class="queue.customerType.toLowerCase()"
+                :title="queue.customerType"
+              >
+                {{ getCustomerTypeShort(queue.customerType) }}
               </span>
-            </span>
-            <span class="time-elapsed-tag">
-              {{ getTimeElapsed(queue.timestamp) }}
-            </span>
-            <button class="delete-button" @click.stop="onRemove(index)">
-              <span class="material-icons">remove_circle</span>
-            </button>
-          </div>
-        </li>
+              <span 
+                class="category-tag" 
+                :class="getCategoryClass(queue.category)"
+                :title="queue.category"
+              >
+                {{ getCategoryShort(queue.category) }}
+              </span>
+              <span class="customer-info">
+                {{ queue.name }}{{ !hideContacts ? ` (${queue.contact})` : '' }}
+                <span v-if="queue.assignedStaff" class="assigned-staff">
+                  • Assigned to {{ queue.assignedStaff }}
+                </span>
+              </span>
+              <span class="time-elapsed-tag">
+                {{ getTimeElapsed(queue.timestamp) }}
+              </span>
+              <button class="delete-button" @click.stop="onRemove(queue)">
+                <span class="material-icons">remove_circle</span>
+              </button>
+            </div>
+          </li>
+          <div v-if="shouldShowDivider(index)" class="vip-divider"></div>
+        </template>
       </ul>
     </div>
   </div>
@@ -118,6 +121,15 @@ export default {
       clearInterval(this.timer);
     }
   },
+  computed: {
+    sortedWaitList() {
+      return [...this.waitList].sort((a, b) => {
+        if (a.customerType === 'VIP' && b.customerType !== 'VIP') return -1;
+        if (a.customerType !== 'VIP' && b.customerType === 'VIP') return 1;
+        return 0;
+      });
+    }
+  },
   methods: {
     addCustomer(customer) {
       this.waitList.push({
@@ -141,12 +153,19 @@ export default {
         }
       }
     },
-    onRemove(index) {
-      this.waitList.splice(index, 1);
-      this.showRemoveNotification = true;
-      setTimeout(() => {
-        this.showRemoveNotification = false;
-      }, 1500);
+    onRemove(customer) {
+      const index = this.waitList.findIndex(c => 
+        c.name === customer.name && 
+        c.timestamp === customer.timestamp
+      );
+      
+      if (index !== -1) {
+        this.waitList.splice(index, 1);
+        this.showRemoveNotification = true;
+        setTimeout(() => {
+          this.showRemoveNotification = false;
+        }, 1500);
+      }
     },
     getCustomerTypeShort(type) {
       return type.charAt(0);
@@ -220,6 +239,13 @@ export default {
     },
     addTestCustomers(customers) {
       this.waitList.push(...customers);
+    },
+    shouldShowDivider(index) {
+      const currentCustomer = this.sortedWaitList[index];
+      const nextCustomer = this.sortedWaitList[index + 1];
+      
+      return currentCustomer.customerType === 'VIP' && 
+             (!nextCustomer || nextCustomer.customerType !== 'VIP');
     }
   },
 };
@@ -451,5 +477,15 @@ li:last-child {
   font-size: 1.25rem;
   display: flex;
   align-items: center;
+}
+
+.vip-divider {
+  height: 2px;
+  background-color: #ffd700;
+  margin: 1rem 0;
+  opacity: 0.5;
+  width: calc(100% - 2rem);
+  margin-left: auto;
+  margin-right: auto;
 }
 </style>

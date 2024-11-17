@@ -5,9 +5,6 @@
       <div class="modal-content">
         <div class="modal-header">
           <h2>View Customer</h2>
-          <button @click="$emit('close')" class="close-button">
-            <span class="material-icons">close</span>
-          </button>
         </div>
         <div class="modal-body">
           <div class="input-wrapper">
@@ -51,11 +48,15 @@
             <label>Notes:</label>
             <textarea
               v-model="notes"
-              @input="updateNotes"
               placeholder="Add notes here..."
               rows="3"
             ></textarea>
           </div>
+        </div>
+        <div class="modal-footer">
+          <button @click="saveNotes" class="action">Save Notes</button>
+          <div class="spacer"></div>
+          <button @click="$emit('close')" class="cancel">Close</button>
         </div>
       </div>
     </div>
@@ -96,7 +97,7 @@ export default {
     }
   },
   methods: {
-    updateNotes() {
+    saveNotes() {
       this.$emit('update-notes', this.notes)
       this.showNotification = true
       setTimeout(() => {
@@ -236,7 +237,7 @@ export default {
 }
 
 .spacer {
-  flex-grow: 1;
+  flex: 1;
 }
 
 .staff-select {
@@ -251,5 +252,16 @@ export default {
 .staff-select:focus {
   outline: none;
   border-color: #0d54ff;
+}
+
+.modal-footer {
+  padding: 1rem 2rem;
+  border-top: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #f5f5f5;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
 }
 </style>
