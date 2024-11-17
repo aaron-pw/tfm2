@@ -4,10 +4,27 @@
     <div v-if="isOpen" class="modal-overlay">
       <div class="modal-content">
         <div class="modal-header">
-          <h2>Add new customer</h2>
+          <h2>Add customer to queue</h2>
         </div>
         <div class="modal-body">
           <form @submit.prevent="onSubmit">
+            <div class="input-wrapper">
+              <label for="customerType">Customer Type:</label>
+              <select 
+                v-model="customerType" 
+                id="customerType" 
+                name="customerType"
+                :class="{ 'error': showError && !customerType }"
+              >
+                <option value="">Select customer type</option>
+                <option value="VIP">VIP</option>
+                <option value="Consumer">Consumer</option>
+                <option value="Business">Business</option>
+              </select>
+              <span class="error-message" v-if="showError && !customerType">
+                Please select a customer type
+              </span>
+            </div>
             <div class="input-wrapper">
               <label for="customer">Customer Name:</label>
               <input 
@@ -73,13 +90,14 @@ export default {
       customer: "",
       contact: "",
       notes: "",
+      customerType: "",
       showError: false,
       showNotification: false
     };
   },
   methods: {
     onSubmit() {
-      if (!this.customer || !this.contact) {
+      if (!this.customer || !this.contact || !this.customerType) {
         this.showError = true;
         return;
       }
@@ -87,7 +105,8 @@ export default {
       this.$emit('add-customer', {
         name: this.customer,
         contact: this.contact,
-        notes: this.notes
+        notes: this.notes,
+        customerType: this.customerType
       });
       this.$emit('close');
       this.showNotification = true;
@@ -100,6 +119,7 @@ export default {
       this.customer = "";
       this.contact = "";
       this.notes = "";
+      this.customerType = "";
       this.showError = false;
       this.$emit('close');
     }
@@ -234,5 +254,18 @@ textarea {
 textarea:focus {
   outline: none;
   border-color: #6ccbfe;
+}
+
+select {
+  height: 42px;
+  padding: 5px 10px;
+  font-size: 1.25rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: white;
+}
+
+select.error {
+  border: 2px solid #f96449;
 }
 </style> 

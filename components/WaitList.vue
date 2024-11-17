@@ -20,16 +20,18 @@
       @close="showViewModal = false"
       @update-notes="updateCustomerNotes"
     />
-    <h2 class="wait-list-header">Current Wait List</h2>
+    <h2 class="wait-list-header">In-Store Queue</h2>
     <div v-if="waitList.length === 0" class="empty-queue">
       No customers in queue
     </div>
     <ul v-else>
       <li v-for="(queue, index) in waitList" :key="index">
         <div class="customer-row" @click="showCustomerNotes(queue)">
+          <span class="customer-type-tag" :class="queue.customerType.toLowerCase()">
+            {{ queue.customerType }}
+          </span>
           <span class="customer-info">
             {{ queue.name }} ({{ queue.contact }})
-            <span v-if="queue.notes" class="note-indicator">📝</span>
           </span>
           <button class="delete-button" @click.stop="onRemove(index)">
             <span class="material-icons">remove_circle</span>
@@ -130,26 +132,32 @@ ul {
   padding: 8px;
   cursor: pointer;
   transition: background-color 0.2s;
+  gap: 8px;
 }
 
 .customer-row:hover {
-  background-color: rgba(108, 203, 254, 0.1);
+  background-color: #e3e3e3;
 }
 
 .customer-info {
-  margin-right: 10px;
+  margin-right: 4px;
+  font-size: 1.2rem;
 }
 
 .delete-button {
   background: none;
   border: none;
-  color: #d8f0fe;
+  color: #f96449;
   cursor: pointer;
-  padding: 5px;
+  padding: 2px;
   display: inline-flex;
   align-items: center;
   opacity: 0.7;
   transition: opacity 0.2s;
+}
+
+.delete-button .material-icons {
+  font-size: 2.25rem;
 }
 
 .delete-button:hover {
@@ -165,5 +173,28 @@ ul {
   color: #666;
   font-style: italic;
   margin-top: 1rem;
+}
+
+.customer-type-tag {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: bold;
+  margin-right: 8px;
+}
+
+.customer-type-tag.vip {
+  background-color: #ffd700;
+  color: #000;
+}
+
+.customer-type-tag.consumer {
+  background-color: #90caf9;
+  color: #000;
+}
+
+.customer-type-tag.business {
+  background-color: #81c784;
+  color: #000;
 }
 </style>

@@ -8,6 +8,10 @@
         </div>
         <div class="modal-body">
           <div class="input-wrapper">
+            <label for="customerType">Customer Type:</label>
+            <div class="readonly-display">{{ customer.customerType }}</div>
+          </div>
+          <div class="input-wrapper">
             <label for="customer">Customer Name:</label>
             <div class="readonly-display">{{ customer.name }}</div>
           </div>
@@ -54,7 +58,8 @@ export default {
       default: () => ({
         name: '',
         contact: '',
-        notes: ''
+        notes: '',
+        customerType: ''
       })
     }
   },
