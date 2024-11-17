@@ -28,7 +28,7 @@
       <li v-for="(queue, index) in waitList" :key="index">
         <div class="customer-row" @click="showCustomerNotes(queue)">
           <span class="customer-type-tag" :class="queue.customerType.toLowerCase()">
-            {{ queue.customerType }}
+            {{ getCustomerTypeShort(queue.customerType) }}
           </span>
           <span class="customer-info">
             {{ queue.name }} ({{ queue.contact }})
@@ -100,16 +100,29 @@ export default {
         this.showRemoveNotification = false;
       }, 1500);
     },
+    getCustomerTypeShort(type) {
+      return type.charAt(0);
+    },
   },
 };
 </script>
 
 <style scoped>
+/* Add this to the top of your styles to hide browser scrollbar */
+:global(body) {
+  margin: 0;
+  overflow: hidden; /* Prevents browser scrollbar */
+}
+
 .container {
   max-width: 800px;
   margin: 0 auto;
   padding: 1rem;
   text-align: center;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Prevents container scrollbar */
 }
 
 .wait-list-header {
@@ -121,8 +134,30 @@ export default {
 
 ul {
   list-style: none;
-  padding: 0;
+  padding: 0 1rem 0 0;
   margin: 0;
+  overflow-y: auto; /* Keeps customer list scrollbar */
+  flex: 1;
+  max-height: calc(100vh - 100px);
+}
+
+/* Custom scrollbar for customer list */
+ul::-webkit-scrollbar {
+  width: 8px;
+}
+
+ul::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+ul::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+ul::-webkit-scrollbar-thumb:hover {
+  background: #555;
 }
 
 .customer-row {
@@ -181,6 +216,8 @@ ul {
   font-size: 0.9rem;
   font-weight: bold;
   margin-right: 8px;
+  min-width: 25px;
+  text-align: center;
 }
 
 .customer-type-tag.vip {
@@ -196,5 +233,13 @@ ul {
 .customer-type-tag.business {
   background-color: #81c784;
   color: #000;
+}
+
+li {
+  margin-bottom: 8px;
+}
+
+li:last-child {
+  margin-bottom: 0;
 }
 </style>
