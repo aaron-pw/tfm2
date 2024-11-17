@@ -36,7 +36,7 @@
 </template>
 
 <script>
-import SaveNotification from './SaveNotification.vue'
+import SaveNotification from '../SaveNotification.vue'
 
 export default {
   name: "ViewCustomerModal",
