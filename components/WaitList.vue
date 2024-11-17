@@ -2,7 +2,8 @@
   <div>
     <AppHeader 
       @openModal="showModal = true"
-      @openStaffModal="showStaffModal = true" 
+      @openStaffModal="showStaffModal = true"
+      @add-test-data="addTestCustomers"
     />
     <div class="container">
       <SaveNotification 
@@ -32,10 +33,7 @@
         @remove-staff="removeStaffMember"
       />
       <div class="header-section">
-        <div class="left-section">
-          <h2 class="wait-list-header">In-Store Queue</h2>
-          <DevTools @add-test-data="addTestCustomers" />
-        </div>
+        <h2 class="wait-list-header">In-Store Queue</h2>
         <button @click="toggleContacts" class="toggle-button">
           <span class="material-icons">{{ hideContacts ? 'visibility_off' : 'visibility' }}</span>
           {{ hideContacts ? 'Show Contacts' : 'Hide Contacts' }}
@@ -196,7 +194,17 @@ export default {
       this.staffList.push(staff)
     },
     removeStaffMember(index) {
-      this.staffList.splice(index, 1)
+      const removedStaff = this.staffList[index].name;
+      
+      // Remove staff from list
+      this.staffList.splice(index, 1);
+      
+      // Unassign staff from any customers
+      this.waitList.forEach(customer => {
+        if (customer.assignedStaff === removedStaff) {
+          customer.assignedStaff = null;
+        }
+      });
     },
     assignStaffToCustomer(staffName) {
       const customerIndex = this.waitList.findIndex(c => c === this.selectedCustomer)
@@ -227,11 +235,11 @@ body {
 
 <style scoped>
 .container {
-  max-width: 800px;
+  max-width: 1000px;
   margin: 0 auto;
   padding: 1rem;
   text-align: center;
-  height: 100vh;
+  height: calc(100vh - 80px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -249,7 +257,7 @@ ul {
   margin: 0;
   overflow-y: auto;
   flex: 1;
-  max-height: calc(100vh - 100px);
+  max-height: calc(100vh - 200px);
 }
 
 ul::-webkit-scrollbar {

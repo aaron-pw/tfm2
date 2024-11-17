@@ -8,6 +8,7 @@
         <h2 class="menu-item">Floor Manager</h2>
       </div>
       <div class="right-section">
+        <DevTools @add-test-data="$emit('add-test-data', $event)" />
         <button @click="$emit('openStaffModal')" class="manage-staff-button">Manage Staff</button>
         <button @click="$emit('openModal')" class="add-button">Add Customer</button>
       </div>
@@ -16,9 +17,13 @@
 </template>
 
 <script>
+import DevTools from './dev/DevTools.vue'
 export default {
   name: 'AppHeader',
-  emits: ['openModal', 'openStaffModal']
+  emits: ['openModal', 'openStaffModal'],
+  components: [
+    DevTools
+  ]
 }
 </script>
 
