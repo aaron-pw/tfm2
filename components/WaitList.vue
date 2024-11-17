@@ -108,7 +108,6 @@ export default {
 </script>
 
 <style scoped>
-/* Add this to the top of your styles to hide browser scrollbar */
 :global(body) {
   margin: 0;
   overflow: hidden; /* Prevents browser scrollbar */
@@ -141,7 +140,6 @@ ul {
   max-height: calc(100vh - 100px);
 }
 
-/* Custom scrollbar for customer list */
 ul::-webkit-scrollbar {
   width: 8px;
 }
