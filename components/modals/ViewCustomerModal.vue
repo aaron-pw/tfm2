@@ -8,6 +8,10 @@
         </div>
         <div class="modal-body">
           <div class="input-wrapper">
+            <label>Time Added:</label>
+            <div class="readonly-display">{{ customer.timestamp || 'Not available' }}</div>
+          </div>
+          <div class="input-wrapper">
             <label for="customerType">Customer Type:</label>
             <div class="readonly-display">{{ customer.customerType }}</div>
           </div>
@@ -59,7 +63,8 @@ export default {
         name: '',
         contact: '',
         notes: '',
-        customerType: ''
+        customerType: '',
+        timestamp: ''
       })
     }
   },

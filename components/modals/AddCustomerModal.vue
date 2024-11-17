@@ -106,7 +106,8 @@ export default {
         name: this.customer,
         contact: this.contact,
         notes: this.notes,
-        customerType: this.customerType
+        customerType: this.customerType,
+        timestamp: new Date().toLocaleTimeString()
       });
       this.$emit('close');
       this.showNotification = true;

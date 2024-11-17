@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 definePageMeta({
-  title: 'TFM'
+  title: 'Floor Manager'
 })
 </script>
 
