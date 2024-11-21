@@ -24,6 +24,13 @@
         @add-staff="addStaffMember"
         @remove-staff="removeStaffMember"
       />
+      <ConfirmModal
+        :is-open="showConfirmModal"
+        title="Remove Customer"
+        :message="customerToRemove ? `Are you sure you want to remove ${customerToRemove.name} from the queue?` : ''"
+        @confirm="confirmRemove"
+        @cancel="cancelRemove"
+      />
       <div class="header-section">
         <div class="tabs">
           <button class="tab-button" :class="{ active: activeTab === 'waiting' }" @click="activeTab = 'waiting'">
@@ -84,6 +91,7 @@
 <script>
 import AppHeader from './AppHeader.vue';
 import AddCustomerModal from './modals/AddCustomerModal.vue';
+import ConfirmModal from './modals/ConfirmModal.vue';
 import ManageStaffModal from './modals/ManageStaffModal.vue';
 import ViewCustomerModal from './modals/ViewCustomerModal.vue';
 import SaveNotification from './SaveNotification.vue';
@@ -96,6 +104,7 @@ export default {
     SaveNotification,
     AppHeader,
     ManageStaffModal,
+    ConfirmModal,
   },
   data() {
     return {
@@ -108,6 +117,8 @@ export default {
       staffList: [],
       hideContacts: true,
       activeTab: 'waiting',
+      showConfirmModal: false,
+      customerToRemove: null,
     };
   },
   computed: {
@@ -161,15 +172,29 @@ export default {
       }
     },
     onRemove(customer) {
-      const index = this.waitList.findIndex((c) => c.name === customer.name && c.timestamp === customer.timestamp);
+      this.customerToRemove = customer;
+      this.showConfirmModal = true;
+    },
+    confirmRemove() {
+      if (this.customerToRemove) {
+        const index = this.waitList.findIndex(
+          (c) => c.name === this.customerToRemove.name && c.timestamp === this.customerToRemove.timestamp
+        );
 
-      if (index !== -1) {
-        this.waitList.splice(index, 1);
-        this.showRemoveNotification = true;
-        setTimeout(() => {
-          this.showRemoveNotification = false;
-        }, 1500);
+        if (index !== -1) {
+          this.waitList.splice(index, 1);
+          this.showRemoveNotification = true;
+          setTimeout(() => {
+            this.showRemoveNotification = false;
+          }, 1500);
+        }
       }
+      this.showConfirmModal = false;
+      this.customerToRemove = null;
+    },
+    cancelRemove() {
+      this.showConfirmModal = false;
+      this.customerToRemove = null;
     },
     getCustomerTypeShort(type) {
       return type.charAt(0);
