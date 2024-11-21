@@ -26,8 +26,8 @@
       />
       <ConfirmModal
         :is-open="showConfirmModal"
-        title="Remove Customer"
-        :message="customerToRemove ? `Are you sure you want to remove ${customerToRemove.name} from the queue?` : ''"
+        :title="getRemovalTitle()"
+        :message="customerToRemove ? getRemovalMessage(customerToRemove) : ''"
         @confirm="confirmRemove"
         @cancel="cancelRemove"
       />
@@ -288,6 +288,15 @@ export default {
       const nextCustomer = this.sortedWaitList[index + 1];
 
       return currentCustomer.customerType === 'VIP' && (!nextCustomer || nextCustomer.customerType !== 'VIP');
+    },
+    getRemovalMessage(customer) {
+      if (this.activeTab === 'serving') {
+        return `Has ${customer.assignedStaff} finished serving ${customer.name}?`;
+      }
+      return `Are you sure you want to remove ${customer.name} from the queue?`;
+    },
+    getRemovalTitle() {
+      return this.activeTab === 'serving' ? 'Complete Service' : 'Remove Customer';
     },
   },
 };

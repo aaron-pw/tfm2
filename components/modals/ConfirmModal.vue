@@ -5,7 +5,13 @@
       <p>{{ message }}</p>
       <div class="button-group">
         <button class="cancel-button" @click="$emit('cancel')">Cancel</button>
-        <button class="confirm-button" @click="$emit('confirm')">Confirm</button>
+        <button
+          class="confirm-button"
+          :class="{ 'complete-button': title === 'Complete Service' }"
+          @click="$emit('confirm')"
+        >
+          {{ title === 'Complete Service' ? 'Complete' : 'Confirm' }}
+        </button>
       </div>
     </div>
   </div>
@@ -97,5 +103,13 @@ h3 {
 p {
   color: #666;
   margin: 1rem 0;
+}
+
+.complete-button {
+  background-color: #4caf50 !important; /* Green color for completion */
+}
+
+.complete-button:hover {
+  background-color: #43a047 !important;
 }
 </style>
