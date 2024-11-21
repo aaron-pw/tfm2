@@ -105,6 +105,9 @@
                   </div>
                 </div>
               </div>
+              <span v-if="showError && selectedOutfits.length === 0" class="error-message">
+                Please select at least one piece of clothing
+              </span>
             </div>
             <div class="button-group">
               <button class="action" type="submit">Add to Queue</button>
@@ -160,7 +163,13 @@ export default {
   },
   methods: {
     onSubmit() {
-      if (!this.customer || !this.contact || !this.customerType || !this.category) {
+      if (
+        !this.customer ||
+        !this.contact ||
+        !this.customerType ||
+        !this.category ||
+        this.selectedOutfits.length === 0
+      ) {
         this.showError = true;
         return;
       }

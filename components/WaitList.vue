@@ -76,20 +76,29 @@
                 </template>
               </div>
               <div class="details-section" @click.stop="showCustomerNotes(queue)">
-                <span v-if="queue.assignedStaff" class="serving-icon" title="Currently being served">
-                  <span class="material-icons">person</span>
-                </span>
-                <span class="customer-info"> {{ queue.name }}{{ !hideContacts ? ` (${queue.contact})` : '' }} </span>
-                <div v-if="queue.appearance?.outfits && activeTab === 'waiting'" class="appearance-tags">
-                  <div
-                    v-for="outfit in queue.appearance.outfits"
-                    :key="`${outfit.type}-${outfit.color}`"
-                    class="outfit-tag"
-                  >
-                    <span class="outfit-text">{{ outfit.type }}</span>
-                    <span class="color-swatch" :style="{ backgroundColor: outfit.hex }">
-                      <span v-if="outfit.hex === '#ffffff'" class="white-swatch"></span>
+                <div class="customer-details">
+                  <span v-if="queue.assignedStaff" class="serving-icon" title="Currently being served">
+                    <span class="material-icons">person</span>
+                  </span>
+                  <div class="name-and-appearance">
+                    <span class="customer-info">
+                      {{ queue.name }}{{ !hideContacts ? ` (${queue.contact})` : '' }}
                     </span>
+                    <div
+                      v-if="queue.appearance?.outfits && activeTab === 'waiting' && hideContacts"
+                      class="appearance-tags"
+                    >
+                      <div
+                        v-for="outfit in queue.appearance.outfits"
+                        :key="`${outfit.type}-${outfit.color}`"
+                        class="outfit-tag"
+                      >
+                        <span class="outfit-text">{{ outfit.type }}</span>
+                        <span class="color-swatch" :style="{ backgroundColor: outfit.hex }">
+                          <span v-if="outfit.hex === '#ffffff'" class="white-swatch"></span>
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <span v-if="queue.assignedStaff" class="assigned-staff"> • Assigned to {{ queue.assignedStaff }} </span>
@@ -457,6 +466,37 @@ ul::-webkit-scrollbar-thumb:hover {
   align-items: center;
   gap: 8px;
   min-width: fit-content;
+}
+
+.customer-details {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.name-and-appearance {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.appearance-tags {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.outfit-tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 16px;
+  background: #f5f5f5;
+  font-size: 0.8rem;
+  white-space: nowrap;
 }
 
 .details-section {
