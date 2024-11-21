@@ -54,31 +54,45 @@
       <ul v-else>
         <template v-for="(queue, index) in sortedWaitList" :key="index">
           <li>
-            <div class="customer-row" @click="showCustomerNotes(queue)">
-              <template v-if="hideContacts && !queue.assignedStaff">
-                <span class="customer-type-tag" :class="queue.customerType.toLowerCase()" :title="queue.customerType">
-                  {{ getCustomerTypeShort(queue.customerType) }}
-                </span>
-                <span class="category-tag" :class="getCategoryClass(queue.category)" :title="queue.category">
-                  {{ getCategoryShort(queue.category) }}
-                </span>
-              </template>
-              <span class="customer-info">
-                <span v-if="queue.assignedStaff" class="serving-icon" title="Currently being served">
-                  <span class="material-icons">person</span>
-                </span>
-                {{ queue.name }}{{ !hideContacts ? ` (${queue.contact})` : '' }}
-                <span v-if="queue.assignedStaff" class="assigned-staff"> • Assigned to {{ queue.assignedStaff }} </span>
-              </span>
-              <span class="time-elapsed-tag">
-                <template v-if="queue.assignedStaff">
-                  Serving: {{ getTimeElapsed(queue.timestamp, queue.servedTimestamp, false) }}
+            <div class="customer-row">
+              <div class="tag-section">
+                <template v-if="hideContacts && !queue.assignedStaff">
+                  <span
+                    v-tooltip
+                    class="customer-type-tag"
+                    :class="queue.customerType.toLowerCase()"
+                    :title="queue.customerType"
+                  >
+                    {{ getCustomerTypeShort(queue.customerType) }}
+                  </span>
+                  <span
+                    v-tooltip
+                    class="category-tag"
+                    :class="getCategoryClass(queue.category)"
+                    :title="queue.category"
+                  >
+                    {{ getCategoryShort(queue.category) }}
+                  </span>
                 </template>
-                <template v-else> Waiting: {{ getTimeElapsed(queue.timestamp, null, false) }} </template>
-              </span>
-              <button class="delete-button" @click.stop="onRemove(queue)">
-                <span class="material-icons">remove_circle</span>
-              </button>
+              </div>
+              <div class="details-section" @click="showCustomerNotes(queue)">
+                <span class="customer-info">
+                  <span v-if="queue.assignedStaff" class="serving-icon" title="Currently being served">
+                    <span class="material-icons">person</span>
+                  </span>
+                  {{ queue.name }}{{ !hideContacts ? ` (${queue.contact})` : '' }}
+                </span>
+                <span v-if="queue.assignedStaff" class="assigned-staff"> • Assigned to {{ queue.assignedStaff }} </span>
+                <span class="time-elapsed-tag">
+                  <template v-if="queue.assignedStaff">
+                    Serving: {{ getTimeElapsed(queue.timestamp, queue.servedTimestamp, false) }}
+                  </template>
+                  <template v-else> Waiting: {{ getTimeElapsed(queue.timestamp, null, false) }} </template>
+                </span>
+                <button class="delete-button" @click.stop="onRemove(queue)">
+                  <span class="material-icons">remove_circle</span>
+                </button>
+              </div>
             </div>
           </li>
           <div v-if="shouldShowDivider(index)" class="vip-divider"></div>
@@ -89,6 +103,8 @@
 </template>
 
 <script>
+import '../assets/tooltip.css';
+import { tooltip } from '../directives/tooltip';
 import AppHeader from './AppHeader.vue';
 import AddCustomerModal from './modals/AddCustomerModal.vue';
 import ConfirmModal from './modals/ConfirmModal.vue';
@@ -105,6 +121,9 @@ export default {
     AppHeader,
     ManageStaffModal,
     ConfirmModal,
+  },
+  directives: {
+    tooltip,
   },
   data() {
     return {
@@ -240,9 +259,9 @@ export default {
         'Mobiles & Tablets': 'MOB',
         'Pre-Paid': 'PRE',
         Internet: 'INT',
-        Accessories: 'ACC',
-        'Account Help': 'ACNT',
-        'Tech Help': 'TECH',
+        Accessories: 'ACS',
+        'Account Help': 'ACT',
+        'Tech Help': 'TEH',
       };
       return shortcuts[category] || category;
     },
@@ -359,22 +378,37 @@ ul::-webkit-scrollbar-thumb:hover {
   display: flex;
   align-items: center;
   padding: 8px 1rem;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  gap: 8px;
   width: calc(100% - 2rem);
   margin: 0 auto;
 }
 
-.customer-row:hover {
-  background-color: #e3e3e3;
+.tag-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: fit-content;
+}
+
+.details-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  margin-left: 8px;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.details-section:hover {
+  background-color: #f0f0f0;
 }
 
 .customer-info {
-  margin-right: 4px;
-  font-size: 1.2rem;
   display: flex;
   align-items: center;
+  font-size: 1.2rem;
 }
 
 .delete-button {
@@ -592,5 +626,9 @@ li:last-child {
   border-radius: 12px;
   font-size: 0.9rem;
   font-weight: 500;
+}
+
+.customer-row:hover {
+  background-color: transparent;
 }
 </style>
