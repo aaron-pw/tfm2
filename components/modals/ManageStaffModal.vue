@@ -9,45 +9,44 @@
         </div>
         <div class="modal-body">
           <div class="input-row">
-            <input 
-              v-model="newStaffName" 
-              type="text" 
+            <input
+              v-model="newStaffName"
+              type="text"
               placeholder="Enter staff name"
-              :class="{ 'error': showError && !newStaffName }"
+              :class="{ error: showError && !newStaffName }"
               @keyup.enter="addStaffMember"
-            >
-            <button @click="addStaffMember" class="add-button">
+            />
+            <button class="add-button" @click="addStaffMember">
               <span class="material-icons add-icon">add</span>
               <span>Add</span>
             </button>
           </div>
-          <span class="error-message" v-if="showError && !newStaffName">
-            Please enter staff name
-          </span>
+          <span v-if="showError && !newStaffName" class="error-message"> Please enter staff name </span>
 
           <div class="staff-list-section">
-            <div class="staff-list" v-if="staffList.length > 0">
-              <div v-for="(staff, index) in staffList" 
-                   :key="index" 
-                   class="staff-item"
-              >
+            <div v-if="staffList.length > 0" class="staff-list">
+              <div v-for="(staff, index) in staffList" :key="index" class="staff-item">
                 <div class="staff-info">
                   <span class="material-icons staff-icon">person</span>
                   <span class="staff-name">{{ staff.name }}</span>
                 </div>
-                <button @click="removeStaffMember(index)" class="delete-button">
+                <div class="staff-time" :class="{ serving: staff.servingCustomer }">
+                  <template v-if="staff.servingCustomer">
+                    Serving {{ staff.servingCustomer }}: {{ getTimeElapsed(staff.servingStartTime) }}
+                  </template>
+                  <template v-else> Ready: {{ getTimeElapsed(staff.readyTimestamp) }} </template>
+                </div>
+                <button class="delete-button" @click="removeStaffMember(index)">
                   <span class="material-icons">remove_circle</span>
                 </button>
               </div>
             </div>
-            
-            <div v-else class="empty-state">
-              No staff members added yet
-            </div>
+
+            <div v-else class="empty-state">No staff members added yet</div>
           </div>
         </div>
         <div class="modal-footer">
-          <button @click="$emit('close')" class="cancel">Close</button>
+          <button class="cancel" @click="$emit('close')">Close</button>
         </div>
       </div>
     </div>
@@ -59,39 +58,70 @@ export default {
   props: {
     isOpen: {
       type: Boolean,
-      default: false
+      default: false,
     },
     staffList: {
       type: Array,
-      default: () => []
-    }
+      default: () => [],
+    },
   },
   data() {
     return {
       newStaffName: '',
       showError: false,
-      showNotification: false
+      showNotification: false,
+    };
+  },
+  mounted() {
+    this.timer = setInterval(() => {
+      this.$forceUpdate();
+    }, 1000);
+  },
+  beforeUnmount() {
+    if (this.timer) {
+      clearInterval(this.timer);
     }
   },
   methods: {
     addStaffMember() {
       if (!this.newStaffName) {
-        this.showError = true
-        return
+        this.showError = true;
+        return;
       }
-      this.$emit('add-staff', { name: this.newStaffName })
-      this.newStaffName = ''
-      this.showError = false
-      this.showNotification = true
+      this.$emit('add-staff', {
+        name: this.newStaffName,
+        readyTimestamp: new Date().toISOString(),
+      });
+      this.newStaffName = '';
+      this.showError = false;
+      this.showNotification = true;
       setTimeout(() => {
-        this.showNotification = false
-      }, 1500)
+        this.showNotification = false;
+      }, 1500);
     },
     removeStaffMember(index) {
-      this.$emit('remove-staff', index)
-    }
-  }
-}
+      this.$emit('remove-staff', index);
+    },
+    getTimeElapsed(timestamp) {
+      if (!timestamp) return '';
+
+      const now = new Date();
+      const ready = new Date(timestamp);
+      const diffInSeconds = Math.floor((now - ready) / 1000);
+
+      const hours = Math.floor(diffInSeconds / 3600);
+      const minutes = Math.floor((diffInSeconds % 3600) / 60);
+
+      let timeString = '';
+      if (hours > 0) {
+        timeString += `${hours}h `;
+      }
+      timeString += `${minutes}m`;
+
+      return timeString;
+    },
+  },
+};
 </script>
 
 <style scoped>
@@ -157,6 +187,7 @@ export default {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 150px;
 }
 
 .staff-icon {
@@ -256,4 +287,19 @@ input.error {
   display: flex;
   align-items: center;
 }
-</style> 
+
+.staff-time {
+  color: #666;
+  font-size: 0.9em;
+  margin-left: auto;
+  margin-right: 1rem;
+  background: #f5f5f5;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.staff-time.serving {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+</style>

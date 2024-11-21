@@ -54,7 +54,7 @@
       <ul v-else>
         <template v-for="(queue, index) in sortedWaitList" :key="index">
           <li>
-            <div class="customer-row">
+            <div class="customer-row" @click.stop>
               <div class="tag-section">
                 <template v-if="hideContacts && !queue.assignedStaff">
                   <span
@@ -75,13 +75,23 @@
                   </span>
                 </template>
               </div>
-              <div class="details-section" @click="showCustomerNotes(queue)">
-                <span class="customer-info">
-                  <span v-if="queue.assignedStaff" class="serving-icon" title="Currently being served">
-                    <span class="material-icons">person</span>
-                  </span>
-                  {{ queue.name }}{{ !hideContacts ? ` (${queue.contact})` : '' }}
+              <div class="details-section" @click.stop="showCustomerNotes(queue)">
+                <span v-if="queue.assignedStaff" class="serving-icon" title="Currently being served">
+                  <span class="material-icons">person</span>
                 </span>
+                <span class="customer-info"> {{ queue.name }}{{ !hideContacts ? ` (${queue.contact})` : '' }} </span>
+                <div v-if="queue.appearance?.outfits && activeTab === 'waiting'" class="appearance-tags">
+                  <div
+                    v-for="outfit in queue.appearance.outfits"
+                    :key="`${outfit.type}-${outfit.color}`"
+                    class="outfit-tag"
+                  >
+                    <span class="outfit-text">{{ outfit.type }}</span>
+                    <span class="color-swatch" :style="{ backgroundColor: outfit.hex }">
+                      <span v-if="outfit.hex === '#ffffff'" class="white-swatch"></span>
+                    </span>
+                  </div>
+                </div>
                 <span v-if="queue.assignedStaff" class="assigned-staff"> • Assigned to {{ queue.assignedStaff }} </span>
                 <span class="time-elapsed-tag">
                   <template v-if="queue.assignedStaff">
@@ -138,6 +148,12 @@ export default {
       activeTab: 'waiting',
       showConfirmModal: false,
       customerToRemove: null,
+      clothingTypes: [
+        { type: 'Shirt', icon: 'dry_cleaning' },
+        { type: 'Pants', icon: 'styler' },
+        { type: 'Dress', icon: 'iron' },
+        { type: 'Hat', icon: 'face' },
+      ],
     };
   },
   computed: {
@@ -201,6 +217,17 @@ export default {
         );
 
         if (index !== -1) {
+          // Reset staff member's status when customer is removed
+          const staffIndex = this.staffList.findIndex((s) => s.name === this.customerToRemove.assignedStaff);
+          if (staffIndex !== -1) {
+            this.staffList[staffIndex] = {
+              ...this.staffList[staffIndex],
+              servingCustomer: null,
+              servingStartTime: null,
+              readyTimestamp: new Date().toISOString(),
+            };
+          }
+
           this.waitList.splice(index, 1);
           this.showRemoveNotification = true;
           setTimeout(() => {
@@ -269,7 +296,11 @@ export default {
       return category?.toLowerCase().replace(/&/g, 'and').replace(/\s+/g, '-') || '';
     },
     addStaffMember(staff) {
-      this.staffList.push(staff);
+      this.staffList.push({
+        ...staff,
+        servingCustomer: null,
+        servingStartTime: null,
+      });
     },
     removeStaffMember(index) {
       const removedStaff = this.staffList[index].name;
@@ -281,16 +312,29 @@ export default {
       this.waitList.forEach((customer) => {
         if (customer.assignedStaff === removedStaff) {
           customer.assignedStaff = null;
+          customer.servedTimestamp = null;
         }
       });
     },
     assignStaffToCustomer(staffName) {
       const customerIndex = this.waitList.findIndex((c) => c === this.selectedCustomer);
-      if (customerIndex !== -1) {
+      const staffIndex = this.staffList.findIndex((s) => s.name === staffName);
+
+      if (customerIndex !== -1 && staffIndex !== -1) {
+        const now = new Date().toISOString();
+
+        // Update customer
         this.waitList[customerIndex] = {
           ...this.waitList[customerIndex],
           assignedStaff: staffName,
-          servedTimestamp: staffName ? new Date().toISOString() : null,
+          servedTimestamp: now,
+        };
+
+        // Update staff member
+        this.staffList[staffIndex] = {
+          ...this.staffList[staffIndex],
+          servingCustomer: this.waitList[customerIndex].name,
+          servingStartTime: now,
         };
       }
     },
@@ -316,6 +360,32 @@ export default {
     },
     getRemovalTitle() {
       return this.activeTab === 'serving' ? 'Complete Service' : 'Remove Customer';
+    },
+    getColorHex(colorName) {
+      const colorMap = {
+        Red: '#ff4444',
+        Blue: '#4444ff',
+        Green: '#44aa44',
+        Black: '#333333',
+        White: '#ffffff',
+        Yellow: '#ffff44',
+        Pink: '#ff44ff',
+        Purple: '#9944ff',
+        Orange: '#ff8844',
+        Brown: '#8b4513',
+      };
+      return colorMap[colorName] || '#333333';
+    },
+    isLightColor(hex) {
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
+      const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+      return brightness > 155;
+    },
+    getIconForType(type) {
+      const item = this.clothingTypes.find((i) => i.type === type);
+      return item ? item.icon : 'help_outline';
     },
   },
 };
@@ -394,7 +464,7 @@ ul::-webkit-scrollbar-thumb:hover {
   align-items: center;
   gap: 8px;
   flex: 1;
-  margin-left: 8px;
+  margin-left: 4px;
   cursor: pointer;
   padding: 8px 12px;
   border-radius: 4px;
@@ -630,5 +700,69 @@ li:last-child {
 
 .customer-row:hover {
   background-color: transparent;
+}
+
+.appearance-tags {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-right: 8px;
+  margin-left: -4px;
+}
+
+.appearance-tag {
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: #f0f0f0;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.color-tag {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  color: white;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
+}
+
+.color-tag[style*='background-color: #ffffff'] {
+  color: #333;
+  text-shadow: none;
+  border: 1px solid #ccc;
+}
+
+.outfit-tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 16px;
+  background: #f5f5f5;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.outfit-text {
+  color: #333;
+}
+
+.color-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: inline-block;
+  position: relative;
+}
+
+.white-swatch {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: 1px solid #ccc;
+  border-radius: 50%;
 }
 </style>

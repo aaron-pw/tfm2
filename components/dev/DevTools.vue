@@ -33,9 +33,23 @@ export default {
         'Rodriguez',
         'Martinez',
       ];
+      const clothingTypes = ['Shirt', 'Pants', 'Dress', 'Hat'];
+      const colors = [
+        { name: 'Red', hex: '#ff4444' },
+        { name: 'Blue', hex: '#4444ff' },
+        { name: 'Green', hex: '#44aa44' },
+        { name: 'Black', hex: '#333333' },
+        { name: 'White', hex: '#ffffff' },
+        { name: 'Yellow', hex: '#ffff44' },
+        { name: 'Pink', hex: '#ff44ff' },
+        { name: 'Purple', hex: '#9944ff' },
+        { name: 'Orange', hex: '#ff8844' },
+        { name: 'Brown', hex: '#8b4513' },
+      ];
 
       const testCustomers = [];
 
+      // Generate VIP customers
       const vipCount = Math.floor(Math.random() * 3);
       for (let i = 0; i < vipCount; i++) {
         const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
@@ -44,6 +58,26 @@ export default {
         const phone = `04${Math.floor(Math.random() * 100000000)
           .toString()
           .padStart(8, '0')}`;
+
+        // Generate random outfits
+        const outfits = [];
+        const numOutfits = Math.floor(Math.random() * 3) + 1; // 1-3 items of clothing
+        const usedTypes = new Set();
+
+        for (let j = 0; j < numOutfits; j++) {
+          let type;
+          do {
+            type = clothingTypes[Math.floor(Math.random() * clothingTypes.length)];
+          } while (usedTypes.has(type));
+
+          usedTypes.add(type);
+          const color = colors[Math.floor(Math.random() * colors.length)];
+          outfits.push({
+            type,
+            color: color.name,
+            hex: color.hex,
+          });
+        }
 
         const now = new Date();
         const randomTime = new Date(now - Math.random() * 24 * 60 * 60 * 1000);
@@ -57,9 +91,13 @@ export default {
           notes: '',
           assignedStaff: null,
           servedTimestamp: null,
+          appearance: {
+            outfits,
+          },
         });
       }
 
+      // Generate regular customers
       for (let i = 0; i < 13; i++) {
         const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
         const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
@@ -68,6 +106,26 @@ export default {
         const phone = `04${Math.floor(Math.random() * 100000000)
           .toString()
           .padStart(8, '0')}`;
+
+        // Generate random outfits
+        const outfits = [];
+        const numOutfits = Math.floor(Math.random() * 3) + 1; // 1-3 items of clothing
+        const usedTypes = new Set();
+
+        for (let j = 0; j < numOutfits; j++) {
+          let type;
+          do {
+            type = clothingTypes[Math.floor(Math.random() * clothingTypes.length)];
+          } while (usedTypes.has(type));
+
+          usedTypes.add(type);
+          const color = colors[Math.floor(Math.random() * colors.length)];
+          outfits.push({
+            type,
+            color: color.name,
+            hex: color.hex,
+          });
+        }
 
         const now = new Date();
         const randomTime = new Date(now - Math.random() * 24 * 60 * 60 * 1000);
@@ -81,6 +139,9 @@ export default {
           notes: '',
           assignedStaff: null,
           servedTimestamp: null,
+          appearance: {
+            outfits,
+          },
         });
       }
 
