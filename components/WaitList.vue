@@ -1,21 +1,13 @@
 <template>
   <div>
-    <AppHeader 
-      @openModal="showModal = true"
-      @openStaffModal="showStaffModal = true"
+    <AppHeader
+      @open-modal="showModal = true"
+      @open-staff-modal="showStaffModal = true"
       @add-test-data="addTestCustomers"
     />
     <div class="container">
-      <SaveNotification 
-        :show="showRemoveNotification" 
-        message="✕ Customer removed from queue" 
-        type="error"
-      />
-      <AddCustomerModal 
-        :is-open="showModal" 
-        @close="showModal = false"
-        @add-customer="addCustomer"
-      />
+      <SaveNotification :show="showRemoveNotification" message="✕ Customer removed from queue" type="error" />
+      <AddCustomerModal :is-open="showModal" @close="showModal = false" @add-customer="addCustomer" />
       <ViewCustomerModal
         v-if="selectedCustomer"
         :is-open="showViewModal"
@@ -33,46 +25,49 @@
         @remove-staff="removeStaffMember"
       />
       <div class="header-section">
-        <h2 class="wait-list-header">In-Store Queue</h2>
-        <button @click="toggleContacts" class="toggle-button">
+        <div class="tabs">
+          <button class="tab-button" :class="{ active: activeTab === 'waiting' }" @click="activeTab = 'waiting'">
+            Waiting
+            <span class="tab-count">{{ waitList.filter((c) => !c.assignedStaff).length }}</span>
+          </button>
+          <button class="tab-button" :class="{ active: activeTab === 'serving' }" @click="activeTab = 'serving'">
+            Being Served
+            <span class="tab-count">{{ waitList.filter((c) => c.assignedStaff).length }}</span>
+          </button>
+        </div>
+        <button class="toggle-button" @click="toggleContacts">
           <span class="material-icons">{{ hideContacts ? 'visibility_off' : 'visibility' }}</span>
           {{ hideContacts ? 'Show Contacts' : 'Hide Contacts' }}
         </button>
       </div>
-      <div v-if="waitList.length === 0" class="empty-queue">
-        No customers in queue
+      <div v-if="waitList.length === 0" class="empty-queue">No customers in queue</div>
+      <div v-else-if="sortedWaitList.length === 0" class="empty-queue">
+        No customers {{ activeTab === 'waiting' ? 'waiting' : 'being served' }}
       </div>
       <ul v-else>
         <template v-for="(queue, index) in sortedWaitList" :key="index">
           <li>
             <div class="customer-row" @click="showCustomerNotes(queue)">
-              <span 
-                class="customer-type-tag" 
-                :class="queue.customerType.toLowerCase()"
-                :title="queue.customerType"
-              >
-                {{ getCustomerTypeShort(queue.customerType) }}
-              </span>
-              <span 
-                class="category-tag" 
-                :class="getCategoryClass(queue.category)"
-                :title="queue.category"
-              >
-                {{ getCategoryShort(queue.category) }}
-              </span>
-              <span class="customer-info">
-                {{ queue.name }}{{ !hideContacts ? ` (${queue.contact})` : '' }}
-                <span v-if="queue.assignedStaff" class="assigned-staff">
-                  • Assigned to {{ queue.assignedStaff }}
+              <template v-if="hideContacts && !queue.assignedStaff">
+                <span class="customer-type-tag" :class="queue.customerType.toLowerCase()" :title="queue.customerType">
+                  {{ getCustomerTypeShort(queue.customerType) }}
                 </span>
+                <span class="category-tag" :class="getCategoryClass(queue.category)" :title="queue.category">
+                  {{ getCategoryShort(queue.category) }}
+                </span>
+              </template>
+              <span class="customer-info">
+                <span v-if="queue.assignedStaff" class="serving-icon" title="Currently being served">
+                  <span class="material-icons">person</span>
+                </span>
+                {{ queue.name }}{{ !hideContacts ? ` (${queue.contact})` : '' }}
+                <span v-if="queue.assignedStaff" class="assigned-staff"> • Assigned to {{ queue.assignedStaff }} </span>
               </span>
               <span class="time-elapsed-tag">
                 <template v-if="queue.assignedStaff">
-                  Serving: {{ getTimeElapsed(queue.timestamp, queue.servedTimestamp) }}
+                  Serving: {{ getTimeElapsed(queue.timestamp, queue.servedTimestamp, false) }}
                 </template>
-                <template v-else>
-                  Waiting: {{ getTimeElapsed(queue.timestamp) }}
-                </template>
+                <template v-else> Waiting: {{ getTimeElapsed(queue.timestamp, null, false) }} </template>
               </span>
               <button class="delete-button" @click.stop="onRemove(queue)">
                 <span class="material-icons">remove_circle</span>
@@ -87,22 +82,20 @@
 </template>
 
 <script>
-import AddCustomerModal from './modals/AddCustomerModal.vue'
-import ViewCustomerModal from './modals/ViewCustomerModal.vue'
-import SaveNotification from './SaveNotification.vue'
-import AppHeader from './AppHeader.vue'
-import ManageStaffModal from './modals/ManageStaffModal.vue'
-import DevTools from './dev/DevTools.vue'
+import AppHeader from './AppHeader.vue';
+import AddCustomerModal from './modals/AddCustomerModal.vue';
+import ManageStaffModal from './modals/ManageStaffModal.vue';
+import ViewCustomerModal from './modals/ViewCustomerModal.vue';
+import SaveNotification from './SaveNotification.vue';
 
 export default {
-  name: "WaitList",
+  name: 'WaitList',
   components: {
     AddCustomerModal,
     ViewCustomerModal,
     SaveNotification,
     AppHeader,
     ManageStaffModal,
-    DevTools
   },
   data() {
     return {
@@ -113,35 +106,44 @@ export default {
       selectedCustomer: null,
       showRemoveNotification: false,
       staffList: [],
-      hideContacts: false
+      hideContacts: true,
+      activeTab: 'waiting',
     };
+  },
+  computed: {
+    sortedWaitList() {
+      const filteredList = this.waitList.filter((customer) => {
+        if (this.activeTab === 'waiting') {
+          return !customer.assignedStaff;
+        } else {
+          return customer.assignedStaff;
+        }
+      });
+
+      return filteredList.sort((a, b) => {
+        if (a.customerType === 'VIP' && b.customerType !== 'VIP') return -1;
+        if (a.customerType !== 'VIP' && b.customerType === 'VIP') return 1;
+        return 0;
+      });
+    },
   },
   mounted() {
     this.timer = setInterval(() => {
       this.$forceUpdate();
     }, 1000);
   },
-  beforeDestroy() {
+  beforeUnmount() {
     if (this.timer) {
       clearInterval(this.timer);
-    }
-  },
-  computed: {
-    sortedWaitList() {
-      return [...this.waitList].sort((a, b) => {
-        if (a.customerType === 'VIP' && b.customerType !== 'VIP') return -1;
-        if (a.customerType !== 'VIP' && b.customerType === 'VIP') return 1;
-        return 0;
-      });
     }
   },
   methods: {
     addCustomer(customer) {
       this.waitList.push({
         ...customer,
-        timestamp: new Date().toISOString()
-      })
-      this.showModal = false
+        timestamp: new Date().toISOString(),
+      });
+      this.showModal = false;
     },
     showCustomerNotes(customer) {
       this.selectedCustomer = customer;
@@ -149,21 +151,18 @@ export default {
     },
     updateCustomerNotes(newNotes) {
       if (this.selectedCustomer) {
-        const index = this.waitList.findIndex(c => c === this.selectedCustomer);
+        const index = this.waitList.findIndex((c) => c === this.selectedCustomer);
         if (index !== -1) {
           this.waitList[index] = {
             ...this.selectedCustomer,
-            notes: newNotes
+            notes: newNotes,
           };
         }
       }
     },
     onRemove(customer) {
-      const index = this.waitList.findIndex(c => 
-        c.name === customer.name && 
-        c.timestamp === customer.timestamp
-      );
-      
+      const index = this.waitList.findIndex((c) => c.name === customer.name && c.timestamp === customer.timestamp);
+
       if (index !== -1) {
         this.waitList.splice(index, 1);
         this.showRemoveNotification = true;
@@ -175,13 +174,13 @@ export default {
     getCustomerTypeShort(type) {
       return type.charAt(0);
     },
-    getTimeElapsed(timestamp, servedTimestamp) {
+    getTimeElapsed(timestamp, servedTimestamp, showSeconds = false) {
       if (!timestamp) return '';
-      
+
       const added = new Date(timestamp);
       const now = new Date();
       let diffInSeconds;
-      
+
       if (servedTimestamp) {
         // If being served, show time since service started
         const servedTime = new Date(servedTimestamp);
@@ -190,63 +189,65 @@ export default {
         // If not being served, show total wait time
         diffInSeconds = Math.floor((now - added) / 1000);
       }
-      
+
       const hours = Math.floor(diffInSeconds / 3600);
       const minutes = Math.floor((diffInSeconds % 3600) / 60);
       const seconds = diffInSeconds % 60;
-      
+
       let timeString = '';
       if (hours > 0) {
         timeString += `${hours}h `;
       }
       if (minutes > 0 || hours > 0) {
-        timeString += `${minutes}m `;
+        timeString += `${minutes}m`;
+      } else {
+        timeString += '0m';
       }
-      timeString += `${seconds}s`;
-      
+
+      if (showSeconds) {
+        timeString += ` ${seconds}s`;
+      }
+
       return timeString;
     },
     getCategoryShort(category) {
       const shortcuts = {
         'Mobiles & Tablets': 'MOB',
         'Pre-Paid': 'PRE',
-        'Internet': 'INT',
-        'Accessories': 'ACC',
+        Internet: 'INT',
+        Accessories: 'ACC',
         'Account Help': 'ACNT',
-        'Tech Help': 'TECH'
+        'Tech Help': 'TECH',
       };
       return shortcuts[category] || category;
     },
     getCategoryClass(category) {
-      return category?.toLowerCase()
-        .replace(/&/g, 'and')
-        .replace(/\s+/g, '-')
-        || '';
+      return category?.toLowerCase().replace(/&/g, 'and').replace(/\s+/g, '-') || '';
     },
     addStaffMember(staff) {
-      this.staffList.push(staff)
+      this.staffList.push(staff);
     },
     removeStaffMember(index) {
       const removedStaff = this.staffList[index].name;
-      
+
       // Remove staff from list
       this.staffList.splice(index, 1);
-      
+
       // Unassign staff from any customers
-      this.waitList.forEach(customer => {
+      this.waitList.forEach((customer) => {
         if (customer.assignedStaff === removedStaff) {
           customer.assignedStaff = null;
         }
       });
     },
     assignStaffToCustomer(staffName) {
-      const customerIndex = this.waitList.findIndex(c => c === this.selectedCustomer)
+      const customerIndex = this.waitList.findIndex((c) => c === this.selectedCustomer);
       if (customerIndex !== -1) {
         this.waitList[customerIndex] = {
           ...this.waitList[customerIndex],
           assignedStaff: staffName,
-          servedTimestamp: staffName ? new Date().toISOString() : null
-        }
+          servedTimestamp: staffName ? new Date().toISOString() : null,
+        };
       }
     },
     toggleContacts() {
@@ -256,12 +257,13 @@ export default {
       this.waitList.push(...customers);
     },
     shouldShowDivider(index) {
+      if (this.activeTab !== 'waiting') return false;
+
       const currentCustomer = this.sortedWaitList[index];
       const nextCustomer = this.sortedWaitList[index + 1];
-      
-      return currentCustomer.customerType === 'VIP' && 
-             (!nextCustomer || nextCustomer.customerType !== 'VIP');
-    }
+
+      return currentCustomer.customerType === 'VIP' && (!nextCustomer || nextCustomer.customerType !== 'VIP');
+    },
   },
 };
 </script>
@@ -337,6 +339,8 @@ ul::-webkit-scrollbar-thumb:hover {
 .customer-info {
   margin-right: 4px;
   font-size: 1.2rem;
+  display: flex;
+  align-items: center;
 }
 
 .delete-button {
@@ -370,7 +374,8 @@ ul::-webkit-scrollbar-thumb:hover {
   margin-top: 1rem;
 }
 
-.customer-type-tag, .category-tag {
+.customer-type-tag,
+.category-tag {
   cursor: help;
 }
 
@@ -502,5 +507,56 @@ li:last-child {
   width: calc(100% - 2rem);
   margin-left: auto;
   margin-right: auto;
+}
+
+.serving-icon {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 4px;
+  color: #2196f3;
+}
+
+.serving-icon .material-icons {
+  font-size: 1.2rem;
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.tab-button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f0f0f0;
+  color: #666;
+  transition: all 0.2s ease;
+}
+
+.tab-button:hover {
+  background: #e0e0e0;
+}
+
+.tab-button.active {
+  background: #2196f3;
+  color: white;
+}
+
+.tab-button.active .tab-count {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.tab-count {
+  background: rgba(0, 0, 0, 0.1);
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 500;
 }
 </style>
