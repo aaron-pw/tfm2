@@ -1,30 +1,15 @@
 <template>
-  <div id="app">
-    <WaitList />
-  </div>
+  <NuxtLayout>
+    <NuxtPage />
+  </NuxtLayout>
 </template>
 
-<script>
-import WaitList from './components/WaitList.vue'
-
-export default {
-  name: 'App',
-  components: {
-    WaitList
-  }
-}
-</script>
-
 <style>
-html, body {
+html,
+body {
+  height: 100%;
+  width: 100%;
   margin: 0;
   padding: 0;
-  height: 100%;
-  overflow: hidden;
-}
-
-#app {
-  height: 100%;
-  overflow: hidden;
 }
 </style>

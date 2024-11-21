@@ -304,6 +304,7 @@ export default {
 .action:hover {
   background: white;
   color: #0d54ff;
+  box-shadow: inset 0 0 0 2px #0d54ff;
 }
 
 .cancel {

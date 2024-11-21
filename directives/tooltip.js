@@ -1,131 +1,93 @@
-export const tooltip = {
-  mounted(el) {
-    let isTooltipVisible = false;
-    let hideTimeout;
+const createTooltip = (el, text) => {
+  const tooltip = document.createElement('div');
+  tooltip.className = 'custom-tooltip';
+  tooltip.innerHTML = `<span class="tooltip-text">${text}</span>`;
+  document.body.appendChild(tooltip);
+  return tooltip;
+};
 
-    // Keep track of active tooltip globally
-    if (!window._activeTooltip) {
-      window._activeTooltip = null;
-    }
+const positionTooltip = (tooltip, el) => {
+  const rect = el.getBoundingClientRect();
+  const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
 
-    const showTooltip = () => {
-      if (!el.title || isTooltipVisible) return;
+  // Position above the element
+  tooltip.style.left = rect.left + rect.width / 2 + 'px';
+  tooltip.style.top = rect.top + scrollTop - 40 + 'px'; // Increased offset for better visibility
+};
 
-      // Hide any existing tooltip
-      if (window._activeTooltip && window._activeTooltip !== el) {
-        window._activeTooltip._tooltipHandlers?.hideTooltip();
-      }
+const showTooltip = (el, text) => {
+  if (!el._tooltip) {
+    el._tooltip = createTooltip(el, text);
+  }
+  positionTooltip(el._tooltip, el);
+  el._tooltip.style.display = 'flex';
+};
 
-      // Create tooltip element
-      const tooltip = document.createElement('div');
-      tooltip.className = 'custom-tooltip';
-      tooltip.innerHTML = `<span class="tooltip-text">${el.title}</span>`;
+const hideTooltip = (el) => {
+  if (el._tooltip) {
+    el._tooltip.style.display = 'none';
+  }
+};
 
-      // Clear the native title to prevent default tooltip
-      const originalTitle = el.title;
-      el.title = '';
+let touchTimer = null;
 
-      // Position the tooltip
-      const rect = el.getBoundingClientRect();
-      tooltip.style.top = `${rect.top - 35}px`;
-      tooltip.style.left = `${rect.left + rect.width / 2}px`;
+export default {
+  mounted(el, binding) {
+    const text = binding.value || el.getAttribute('title');
+    if (!text) return;
 
-      document.body.appendChild(tooltip);
-      isTooltipVisible = true;
-      window._activeTooltip = el;
+    // Remove title attribute to prevent default tooltip
+    el.removeAttribute('title');
 
-      // Store reference to remove later
-      el._tooltip = tooltip;
-      el._originalTitle = originalTitle;
-    };
+    // Handle mouse events for desktop
+    el.addEventListener('mouseenter', () => showTooltip(el, text));
+    el.addEventListener('mouseleave', () => hideTooltip(el));
 
-    const hideTooltip = () => {
-      if (!isTooltipVisible) return;
+    // Handle touch events for mobile/tablet
+    el.addEventListener(
+      'touchstart',
+      (e) => {
+        // Prevent default to avoid any unwanted behaviors
+        e.preventDefault();
+        e.stopPropagation();
 
-      if (el._tooltip) {
-        el._tooltip.remove();
-        el._tooltip = null;
-        el.title = el._originalTitle;
-        isTooltipVisible = false;
-        if (window._activeTooltip === el) {
-          window._activeTooltip = null;
+        // Clear any existing timer
+        if (touchTimer) {
+          clearTimeout(touchTimer);
         }
+
+        // Show tooltip immediately
+        showTooltip(el, text);
+
+        // Hide after delay
+        touchTimer = setTimeout(() => {
+          hideTooltip(el);
+          touchTimer = null;
+        }, 2000); // Show for 2 seconds
+      },
+      { passive: false }
+    );
+
+    // Hide tooltip on scroll or touch move
+    document.addEventListener('scroll', () => hideTooltip(el));
+    el.addEventListener('touchmove', () => {
+      if (touchTimer) {
+        clearTimeout(touchTimer);
+        touchTimer = null;
       }
-    };
-
-    // Touch event handler
-    const handleTouch = (e) => {
-      e.stopPropagation();
-      e.preventDefault();
-
-      // Clear any existing timeout
-      if (hideTimeout) {
-        clearTimeout(hideTimeout);
-      }
-
-      showTooltip();
-
-      // Auto-hide after 2 seconds
-      hideTimeout = setTimeout(() => {
-        hideTooltip();
-      }, 1000);
-    };
-
-    // Mouse event handlers with pointer-events
-    const handleMouseEnter = () => {
-      if (!isTooltipVisible) {
-        showTooltip();
-      }
-    };
-
-    const handleMouseLeave = (e) => {
-      // Check if we're not moving to the tooltip itself
-      if (!e.relatedTarget?.closest('.custom-tooltip')) {
-        hideTooltip();
-      }
-    };
-
-    // Add event listeners
-    el.addEventListener('touchstart', handleTouch);
-    el.addEventListener('mouseenter', handleMouseEnter);
-    el.addEventListener('mouseleave', handleMouseLeave);
-
-    // Global touch handler to close tooltip when touching outside
-    const handleGlobalTouch = (e) => {
-      if (isTooltipVisible && !el.contains(e.target) && !el._tooltip?.contains(e.target)) {
-        hideTooltip();
-      }
-    };
-
-    document.addEventListener('touchstart', handleGlobalTouch);
-
-    // Store event handlers for cleanup
-    el._tooltipHandlers = {
-      touch: handleTouch,
-      mouseEnter: handleMouseEnter,
-      mouseLeave: handleMouseLeave,
-      globalTouch: handleGlobalTouch,
-      hideTooltip,
-    };
+      hideTooltip(el);
+    });
   },
 
   unmounted(el) {
-    // Clean up all event listeners
-    if (el._tooltipHandlers) {
-      el.removeEventListener('touchstart', el._tooltipHandlers.touch);
-      el.removeEventListener('mouseenter', el._tooltipHandlers.mouseEnter);
-      el.removeEventListener('mouseleave', el._tooltipHandlers.mouseLeave);
-      document.removeEventListener('touchstart', el._tooltipHandlers.globalTouch);
+    // Clean up
+    if (touchTimer) {
+      clearTimeout(touchTimer);
+      touchTimer = null;
     }
-
-    // Remove tooltip if it exists
     if (el._tooltip) {
       el._tooltip.remove();
-    }
-
-    // Clear active tooltip reference if it's this element
-    if (window._activeTooltip === el) {
-      window._activeTooltip = null;
+      delete el._tooltip;
     }
   },
 };

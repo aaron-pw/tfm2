@@ -1,71 +1,31 @@
 <template>
   <div>
     <Head>
-      <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+      <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
     </Head>
     <nav class="menu-strip">
       <div class="left-section">
         <h2 class="menu-item">Floor Manager</h2>
       </div>
       <div class="right-section">
-        <DevTools @add-test-data="$emit('add-test-data', $event)" />
-        <button @click="$emit('openStaffModal')" class="manage-staff-button">Manage Staff</button>
-        <button @click="$emit('openModal')" class="add-button">Add Customer</button>
+        <!-- <DevTools @add-test-data="handleTestData" /> -->
+        <button class="manage-staff-button" @click="$emit('openStaffModal')">Manage Staff</button>
+        <button class="add-button" @click="$emit('openModal')">Add Customer</button>
       </div>
     </nav>
   </div>
 </template>
 
 <script>
-import DevTools from './dev/DevTools.vue'
+import DevTools from './dev/DevTools.vue';
 export default {
   name: 'AppHeader',
-  emits: ['openModal', 'openStaffModal'],
-  components: [
-    DevTools
-  ]
-}
+  components: { DevTools },
+  emits: ['openModal', 'openStaffModal', 'add-test-data'],
+  methods: {
+    handleTestData(data) {
+      this.$emit('add-test-data', data);
+    },
+  },
+};
 </script>
-
-<style scoped>
-.menu-strip {
-  background-color: #f5ede2;
-  padding: 1rem;
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.left-section {
-  display: flex;
-  align-items: center;
-}
-
-.menu-item {
-  color: #0d54ff;
-  text-decoration: none;
-  font-weight: bold;
-  font-size: 1.2rem;
-  margin: 0;
-}
-
-.right-section {
-  display: flex;
-  gap: 10px;
-}
-
-.add-button, .manage-staff-button {
-  padding: 0.5rem 1rem;
-  background-color: white;
-  color: #0d54ff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: bold;
-}
-
-.add-button:hover, .manage-staff-button:hover {
-  background-color: #f0f0f0;
-}
-</style> 

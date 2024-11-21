@@ -1,0 +1,135 @@
+/* Import all component styles */
+@import './waitlist.css';
+@import './tooltip.css';
+
+/* Global styles */
+body {
+  margin: 0;
+  padding: 0;
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    'Helvetica Neue',
+    Arial,
+    sans-serif;
+}
+
+/* Menu bar styles */
+.menu-strip {
+  background-color: #f5ede2;
+  padding: 1rem;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-sizing: border-box;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.left-section {
+  display: flex;
+  align-items: center;
+}
+
+.menu-item {
+  color: #0d54ff;
+  text-decoration: none;
+  font-weight: bold;
+  font-size: 1.5rem;
+  margin: 0;
+}
+
+.right-section {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* Global button styles */
+.add-button,
+.manage-staff-button,
+.header-button {
+  padding: 10px 20px;
+  background-color: white;
+  border: none;
+  border-radius: 4px;
+  color: #0d54ff;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 1.1rem;
+  transition: background-color 0.2s;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.add-button:hover,
+.manage-staff-button:hover,
+.header-button:hover {
+  background-color: #f0f0f0;
+}
+
+/* Modal styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 8px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* Material Icons adjustments */
+.material-icons {
+  font-size: inherit;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+/* Modal button styles */
+.action-button,
+.cancel-button,
+.confirm-button {
+  padding: 12px 32px;
+  height: 48px;
+  font-size: 1.2rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 160px;
+}
+
+/* Add specific styles for modal action buttons */
+.modal-footer .cancel,
+.button-group .cancel,
+.button-group .action {
+  padding: 12px 32px;
+  height: 48px;
+  font-size: 1.2rem;
+  min-width: 160px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}

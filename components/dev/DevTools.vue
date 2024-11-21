@@ -47,6 +47,16 @@ export default {
         { name: 'Brown', hex: '#8b4513' },
       ];
 
+      // Add test staff members
+      const staffNames = ['Alex', 'Sam', 'Jordan', 'Taylor'];
+      const testStaff = staffNames.map((name) => ({
+        name,
+        readyTimestamp: new Date().toISOString(),
+        servingCustomer: null,
+        servingStartTime: null,
+      }));
+
+      // Generate test customers
       const testCustomers = [];
 
       // Generate VIP customers
@@ -80,7 +90,7 @@ export default {
         }
 
         const now = new Date();
-        const randomTime = new Date(now - Math.random() * 24 * 60 * 60 * 1000);
+        const randomTime = new Date(now - Math.random() * 5400000);
 
         testCustomers.push({
           name: `${firstName} ${lastName}`,
@@ -128,7 +138,7 @@ export default {
         }
 
         const now = new Date();
-        const randomTime = new Date(now - Math.random() * 24 * 60 * 60 * 1000);
+        const randomTime = new Date(now - Math.random() * 5400000);
 
         testCustomers.push({
           name: `${firstName} ${lastName}`,
@@ -145,7 +155,11 @@ export default {
         });
       }
 
-      this.$emit('add-test-data', testCustomers);
+      // Emit both staff and customers together
+      this.$emit('add-test-data', {
+        customers: testCustomers,
+        staff: testStaff,
+      });
     },
   },
 };

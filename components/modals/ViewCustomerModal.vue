@@ -29,97 +29,88 @@
           </div>
           <div class="input-wrapper">
             <label>Assigned Staff:</label>
-            <select 
-              v-model="selectedStaff" 
-              @change="assignStaff"
-              class="staff-select"
-            >
+            <select v-model="selectedStaffId" class="staff-select" @change="assignStaff">
               <option value="">Unassigned</option>
-              <option 
-                v-for="staff in availableStaff" 
-                :key="staff.name" 
-                :value="staff.name"
-              >
+              <option v-for="staff in availableStaff" :key="staff.id" :value="staff.id">
                 {{ staff.name }}
               </option>
             </select>
           </div>
           <div class="input-wrapper">
             <label>Notes:</label>
-            <textarea
-              v-model="notes"
-              placeholder="Add notes here..."
-              rows="3"
-            ></textarea>
+            <textarea v-model="notes" placeholder="Add notes here..." rows="3"></textarea>
           </div>
         </div>
         <div class="modal-footer">
-          <button @click="saveNotes" class="action">Save Notes</button>
-          <div class="spacer"></div>
-          <button @click="$emit('close')" class="cancel">Close</button>
+          <div class="button-container">
+            <button class="button action" @click="saveNotes">Save Notes</button>
+            <div class="spacer"></div>
+            <button class="button cancel" @click="$emit('close')">Close</button>
+          </div>
         </div>
       </div>
     </div>
   </div>
 </template>
 
-<script>
-export default {
-  props: {
-    isOpen: {
-      type: Boolean,
-      default: false
-    },
-    customer: {
-      type: Object,
-      required: true,
-      default: () => ({})
-    },
-    availableStaff: {
-      type: Array,
-      default: () => []
-    }
+<script setup lang="ts">
+import { ref, watch } from 'vue';
+import type { Customer, Staff } from '~/types';
+
+const props = defineProps<{
+  isOpen: boolean;
+  customer: Customer;
+  availableStaff: Staff[];
+}>();
+
+const emit = defineEmits<{
+  close: [];
+  'update-notes': [notes: string];
+  'assign-staff': [staffId: string];
+}>();
+
+const notes = ref('');
+const showNotification = ref(false);
+const selectedStaffId = ref('');
+
+watch(
+  () => props.customer,
+  (newCustomer) => {
+    notes.value = newCustomer.notes || '';
+    // Find the staff member by name and use their ID
+    const staffMember = props.availableStaff.find((s) => s.name === newCustomer.assignedStaff);
+    selectedStaffId.value = staffMember?.id || '';
   },
-  data() {
-    return {
-      notes: '',
-      showNotification: false,
-      selectedStaff: ''
-    }
-  },
-  watch: {
-    customer: {
-      immediate: true,
-      handler(newCustomer) {
-        this.notes = newCustomer.notes || ''
-        this.selectedStaff = newCustomer.assignedStaff || ''
-      }
-    }
-  },
-  methods: {
-    saveNotes() {
-      this.$emit('update-notes', this.notes)
-      this.showNotification = true
-      setTimeout(() => {
-        this.showNotification = false
-      }, 1500)
-    },
-    assignStaff() {
-      this.$emit('assign-staff', this.selectedStaff)
-    },
-    formatTimestamp(timestamp) {
-      if (!timestamp) return 'Not available'
-      
-      const date = new Date(timestamp)
-      return date.toLocaleString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: true
-      })
-    }
+  { immediate: true }
+);
+
+const saveNotes = () => {
+  emit('update-notes', notes.value);
+  showNotification.value = true;
+  setTimeout(() => {
+    showNotification.value = false;
+  }, 1500);
+  // Close the modal
+  emit('close');
+};
+
+const assignStaff = () => {
+  if (selectedStaffId.value) {
+    emit('assign-staff', selectedStaffId.value);
   }
-}
+};
+
+const formatTimestamp = (timestamp: string) => {
+  if (!timestamp) return 'Not available';
+
+  const date = new Date(timestamp);
+  return date.toLocaleString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+  });
+};
 </script>
 
 <style scoped>
@@ -206,35 +197,37 @@ export default {
   margin-top: 2rem;
 }
 
-.action {
-  background-color: #0d54ff;
-  color: white;
+.button {
+  flex: 1;
+  height: 40px;
+  padding: 0 2rem;
+  min-width: 150px;
   border: none;
-  padding: 0.5rem 1rem;
   border-radius: 4px;
   cursor: pointer;
   font-weight: bold;
+  transition: all 0.2s;
+  text-align: center;
   display: flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  font-size: 1rem;
+}
+
+.action {
+  background-color: #0d54ff;
+  color: white;
 }
 
 .action:hover {
   background: white;
   color: #0d54ff;
+  box-shadow: inset 0 0 0 2px #0d54ff;
 }
 
 .cancel {
-  padding: 0.5rem 2rem;
-  min-width: 150px;
   background-color: #bebebe;
-  border: none;
-  border-radius: 4px;
   color: #333;
-  cursor: pointer;
-  font-weight: bold;
-  transition: background-color 0.2s;
-  text-align: center;
 }
 
 .cancel:hover {
@@ -243,7 +236,7 @@ export default {
 }
 
 .spacer {
-  flex: 1;
+  display: none;
 }
 
 .staff-select {
@@ -264,10 +257,33 @@ export default {
   padding: 1rem 2rem;
   border-top: 1px solid #eee;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  justify-content: center;
   background-color: #f5f5f5;
   border-bottom-left-radius: 8px;
   border-bottom-right-radius: 8px;
+}
+
+.button-container {
+  display: flex;
+  gap: 1rem;
+  width: 100%;
+  justify-content: space-between;
+  padding: 0 2rem;
+}
+
+.button {
+  height: 40px;
+  padding: 0 1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  min-width: 120px;
 }
 </style>

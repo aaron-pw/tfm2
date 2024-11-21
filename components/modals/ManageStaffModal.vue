@@ -25,23 +25,23 @@
 
           <div class="staff-list-section">
             <div v-if="staffList.length > 0" class="staff-list">
-              <div v-for="(staff, index) in staffList" :key="index" class="staff-item">
+              <div v-for="staff in staffList" :key="staff.id" class="staff-item">
                 <div class="staff-info">
                   <span class="material-icons staff-icon">person</span>
                   <span class="staff-name">{{ staff.name }}</span>
                 </div>
-                <div class="staff-time" :class="{ serving: staff.servingCustomer }">
-                  <template v-if="staff.servingCustomer">
-                    Serving {{ staff.servingCustomer }}: {{ getTimeElapsed(staff.servingStartTime) }}
+                <div class="staff-time" :class="{ serving: staff.serving_customer }">
+                  <template v-if="staff.serving_customer">
+                    Serving: {{ getCustomerName(staff.serving_customer) }}
+                    <span class="serving-time">{{ getTimeElapsed(staff.serving_start_time) }}</span>
                   </template>
-                  <template v-else> Ready: {{ getTimeElapsed(staff.readyTimestamp) }} </template>
+                  <template v-else> Ready: {{ getTimeElapsed(staff.ready_timestamp) }} </template>
                 </div>
-                <button class="delete-button" @click="removeStaffMember(index)">
+                <button class="delete-button" @click="confirmStaffRemoval(staff)">
                   <span class="material-icons">remove_circle</span>
                 </button>
               </div>
             </div>
-
             <div v-else class="empty-state">No staff members added yet</div>
           </div>
         </div>
@@ -50,77 +50,152 @@
         </div>
       </div>
     </div>
+    <ConfirmModal
+      :is-open="showConfirmModal"
+      title="Remove Staff Member"
+      :message="getRemovalMessage()"
+      @confirm="confirmRemove"
+      @cancel="cancelRemove"
+    />
   </div>
 </template>
 
-<script>
-export default {
-  props: {
-    isOpen: {
-      type: Boolean,
-      default: false,
-    },
-    staffList: {
-      type: Array,
-      default: () => [],
-    },
-  },
-  data() {
-    return {
-      newStaffName: '',
-      showError: false,
-      showNotification: false,
-    };
-  },
-  mounted() {
-    this.timer = setInterval(() => {
-      this.$forceUpdate();
-    }, 1000);
-  },
-  beforeUnmount() {
-    if (this.timer) {
-      clearInterval(this.timer);
+<script setup lang="ts">
+import { ref } from 'vue';
+import { useQueue } from '~/composables/useQueue';
+import type { Staff } from '~/types';
+import ConfirmModal from './ConfirmModal.vue';
+
+const props = defineProps<{
+  isOpen: boolean;
+  staffList: Staff[];
+}>();
+
+const { waitList } = useQueue();
+
+const emit = defineEmits<{
+  close: [];
+  'add-staff': [staff: Omit<Staff, 'id'>];
+  'remove-staff': [staffId: string];
+}>();
+
+const newStaffName = ref('');
+const showError = ref(false);
+const showNotification = ref(false);
+const timer = ref<NodeJS.Timer | null>(null);
+const showConfirmModal = ref(false);
+const staffToRemove = ref<Staff | null>(null);
+
+const startTimer = () => {
+  timer.value = setInterval(() => {
+    // Force a re-render to update timestamps
+    if (props.isOpen) {
+      // Using nextTick to avoid Vue warnings
+      nextTick(() => {});
     }
-  },
-  methods: {
-    addStaffMember() {
-      if (!this.newStaffName) {
-        this.showError = true;
-        return;
-      }
-      this.$emit('add-staff', {
-        name: this.newStaffName,
-        readyTimestamp: new Date().toISOString(),
-      });
-      this.newStaffName = '';
-      this.showError = false;
-      this.showNotification = true;
-      setTimeout(() => {
-        this.showNotification = false;
-      }, 1500);
-    },
-    removeStaffMember(index) {
-      this.$emit('remove-staff', index);
-    },
-    getTimeElapsed(timestamp) {
-      if (!timestamp) return '';
+  }, 30000); // Update every 30 seconds
+};
 
-      const now = new Date();
-      const ready = new Date(timestamp);
-      const diffInSeconds = Math.floor((now - ready) / 1000);
+const stopTimer = () => {
+  if (timer.value) {
+    clearInterval(timer.value);
+    timer.value = null;
+  }
+};
 
-      const hours = Math.floor(diffInSeconds / 3600);
-      const minutes = Math.floor((diffInSeconds % 3600) / 60);
+onMounted(() => {
+  if (props.isOpen) {
+    startTimer();
+  }
+});
 
-      let timeString = '';
-      if (hours > 0) {
-        timeString += `${hours}h `;
-      }
-      timeString += `${minutes}m`;
+onUnmounted(() => {
+  stopTimer();
+});
 
-      return timeString;
-    },
-  },
+watch(
+  () => props.isOpen,
+  (newValue) => {
+    if (newValue) {
+      startTimer();
+    } else {
+      stopTimer();
+    }
+  }
+);
+
+const addStaffMember = () => {
+  if (!newStaffName.value) {
+    showError.value = true;
+    return;
+  }
+
+  emit('add-staff', {
+    name: newStaffName.value,
+    ready_timestamp: new Date().toISOString(),
+    serving_customer: null,
+    serving_start_time: null,
+  });
+
+  newStaffName.value = '';
+  showError.value = false;
+  showNotification.value = true;
+  setTimeout(() => {
+    showNotification.value = false;
+  }, 1500);
+};
+
+const confirmStaffRemoval = (staff: Staff) => {
+  staffToRemove.value = staff;
+  showConfirmModal.value = true;
+};
+
+const getRemovalMessage = () => {
+  if (!staffToRemove.value) return '';
+
+  if (staffToRemove.value.serving_customer) {
+    const customerName = getCustomerName(staffToRemove.value.serving_customer);
+    return `${staffToRemove.value.name} is currently serving ${customerName}. Are you sure you want to remove them?`;
+  }
+
+  return `Are you sure you want to remove ${staffToRemove.value.name}?`;
+};
+
+const confirmRemove = () => {
+  if (staffToRemove.value) {
+    emit('remove-staff', staffToRemove.value.id);
+  }
+  showConfirmModal.value = false;
+  staffToRemove.value = null;
+};
+
+const cancelRemove = () => {
+  showConfirmModal.value = false;
+  staffToRemove.value = null;
+};
+
+const getCustomerName = (customerId: string) => {
+  const customer = waitList.value.find((c) => c.id === customerId);
+  return customer ? customer.name : 'Unknown';
+};
+
+const getTimeElapsed = (timestamp: string | null) => {
+  if (!timestamp) return '0m';
+
+  const now = new Date();
+  const time = new Date(timestamp);
+  const diffInSeconds = Math.floor((now.getTime() - time.getTime()) / 1000);
+
+  const hours = Math.floor(diffInSeconds / 3600);
+  const minutes = Math.floor((diffInSeconds % 3600) / 60);
+
+  let timeString = '';
+  if (hours > 0) {
+    timeString += `${hours}h `;
+  }
+  timeString += `${minutes}m`;
+
+  return timeString;
 };
 </script>
 
@@ -296,10 +371,21 @@ input.error {
   background: #f5f5f5;
   padding: 4px 8px;
   border-radius: 4px;
+  min-width: 120px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .staff-time.serving {
   background: #e3f2fd;
   color: #1976d2;
+  font-weight: 500;
+}
+
+.serving-time {
+  font-size: 0.8em;
+  opacity: 0.8;
 }
 </style>

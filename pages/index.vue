@@ -1,9 +1,8 @@
 <script lang="ts" setup>
 definePageMeta({
-  title: 'Floor Manager'
-})
+  title: 'Floor Manager',
+});
 </script>
-
 
 <template>
   <WaitList />

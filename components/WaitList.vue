@@ -1,28 +1,23 @@
 <template>
   <div>
-    <AppHeader
-      @open-modal="showModal = true"
-      @open-staff-modal="showStaffModal = true"
-      @add-test-data="addTestCustomers"
-    />
     <div class="container">
-      <SaveNotification :show="showRemoveNotification" message="✕ Customer removed from queue" type="error" />
-      <AddCustomerModal :is-open="showModal" @close="showModal = false" @add-customer="addCustomer" />
+      <SaveNotification :show="showRemoveNotification" :message="removeNotificationMessage" type="error" />
+      <AddCustomerModal :is-open="showModal" @close="showModal = false" @add-customer="handleAddCustomer" />
       <ViewCustomerModal
         v-if="selectedCustomer"
         :is-open="showViewModal"
         :customer="selectedCustomer"
         :available-staff="staffList"
         @close="showViewModal = false"
-        @update-notes="updateCustomerNotes"
-        @assign-staff="assignStaffToCustomer"
+        @update-notes="handleUpdateNotes"
+        @assign-staff="(staffId) => assignStaffToCustomer(selectedCustomer.id, staffId)"
       />
       <ManageStaffModal
         :is-open="showStaffModal"
         :staff-list="staffList"
         @close="showStaffModal = false"
-        @add-staff="addStaffMember"
-        @remove-staff="removeStaffMember"
+        @add-staff="handleAddStaff"
+        @remove-staff="handleStaffRemoval"
       />
       <ConfirmModal
         :is-open="showConfirmModal"
@@ -101,12 +96,14 @@
                     </div>
                   </div>
                 </div>
-                <span v-if="queue.assignedStaff" class="assigned-staff"> • Assigned to {{ queue.assignedStaff }} </span>
+                <span v-if="queue.assignedStaff" class="assigned-staff">
+                  • Assigned to {{ getStaffName(queue.assignedStaff) }}
+                </span>
                 <span class="time-elapsed-tag">
                   <template v-if="queue.assignedStaff">
-                    Serving: {{ getTimeElapsed(queue.timestamp, queue.servedTimestamp, false) }}
+                    Serving: {{ getTimeElapsed(queue.timestamp, queue.servedTimestamp) }}
                   </template>
-                  <template v-else> Waiting: {{ getTimeElapsed(queue.timestamp, null, false) }} </template>
+                  <template v-else> Waiting: {{ getTimeElapsed(queue.timestamp) }} </template>
                 </span>
                 <button class="delete-button" @click.stop="onRemove(queue)">
                   <span class="material-icons">remove_circle</span>
@@ -121,688 +118,263 @@
   </div>
 </template>
 
-<script>
-import '../assets/tooltip.css';
-import { tooltip } from '../directives/tooltip';
-import AppHeader from './AppHeader.vue';
+<script setup lang="ts">
+import { computed, inject, onMounted, onUnmounted, ref, watch } from 'vue';
+import { useQueue } from '~/composables/useQueue';
+import type { Customer } from '~/types';
 import AddCustomerModal from './modals/AddCustomerModal.vue';
 import ConfirmModal from './modals/ConfirmModal.vue';
 import ManageStaffModal from './modals/ManageStaffModal.vue';
 import ViewCustomerModal from './modals/ViewCustomerModal.vue';
 import SaveNotification from './SaveNotification.vue';
 
-export default {
-  name: 'WaitList',
-  components: {
-    AddCustomerModal,
-    ViewCustomerModal,
-    SaveNotification,
-    AppHeader,
-    ManageStaffModal,
-    ConfirmModal,
-  },
-  directives: {
-    tooltip,
-  },
-  data() {
-    return {
-      waitList: [],
-      showModal: false,
-      showViewModal: false,
-      showStaffModal: false,
-      selectedCustomer: null,
-      showRemoveNotification: false,
-      staffList: [],
-      hideContacts: true,
-      activeTab: 'waiting',
-      showConfirmModal: false,
-      customerToRemove: null,
-      clothingTypes: [
-        { type: 'Shirt', icon: 'dry_cleaning' },
-        { type: 'Pants', icon: 'styler' },
-        { type: 'Dress', icon: 'iron' },
-        { type: 'Hat', icon: 'face' },
-      ],
-    };
-  },
-  computed: {
-    sortedWaitList() {
-      const filteredList = this.waitList.filter((customer) => {
-        if (this.activeTab === 'waiting') {
-          return !customer.assignedStaff;
-        } else {
-          return customer.assignedStaff;
-        }
-      });
+const {
+  waitList,
+  staffList,
+  addCustomer,
+  removeCustomer,
+  addStaffMember,
+  removeStaffMember,
+  assignStaffToCustomer,
+  updateCustomerNotes: updateNotes,
+} = useQueue();
 
-      return filteredList.sort((a, b) => {
-        if (a.customerType === 'VIP' && b.customerType !== 'VIP') return -1;
-        if (a.customerType !== 'VIP' && b.customerType === 'VIP') return 1;
-        return 0;
-      });
-    },
-  },
-  mounted() {
-    this.timer = setInterval(() => {
-      this.$forceUpdate();
-    }, 1000);
-  },
-  beforeUnmount() {
-    if (this.timer) {
-      clearInterval(this.timer);
+// Add missing state with proper types
+const showModal = ref(false);
+const showViewModal = ref(false);
+const showStaffModal = ref(false);
+const showConfirmModal = ref(false);
+const selectedCustomer = ref<Customer | null>(null);
+const customerToRemove = ref<Customer | null>(null);
+const showRemoveNotification = ref(false);
+const hideContacts = ref(true);
+const activeTab = ref('waiting');
+const removeNotificationMessage = ref('');
+
+// Add timer ref
+const timer = ref<NodeJS.Timer | null>(null);
+
+// Start the timer when component is mounted
+onMounted(() => {
+  // Update every 30 seconds instead of every second
+  timer.value = setInterval(() => {
+    // Force a re-render to update all timestamps
+    waitList.value = [...waitList.value];
+  }, 30000);
+});
+
+// Clean up timer when component is unmounted
+onUnmounted(() => {
+  if (timer.value) {
+    clearInterval(timer.value);
+    timer.value = null;
+  }
+});
+
+// Add missing methods
+const handleUpdateNotes = async (newNotes: string) => {
+  if (selectedCustomer.value) {
+    try {
+      await updateNotes(selectedCustomer.value.id, newNotes);
+    } catch (error) {
+      console.error('Error updating notes:', error);
+    }
+  }
+};
+
+const handleStaffRemoval = async (staffId: string) => {
+  const staffMember = staffList.value.find((staff) => staff.id === staffId);
+  if (staffMember) {
+    try {
+      await removeStaffMember(staffId);
+      removeNotificationMessage.value = `✕ Staff member ${staffMember.name} removed`;
+      showRemoveNotification.value = true;
+      setTimeout(() => {
+        showRemoveNotification.value = false;
+      }, 1500);
+    } catch (error) {
+      console.error('Error removing staff member:', error);
+    }
+  }
+};
+
+const addTestData = (data: { customers: Customer[]; staff: any[] }) => {
+  if (data.customers) {
+    waitList.value.push(...data.customers);
+  }
+  if (data.staff) {
+    staffList.value.push(...data.staff);
+  }
+};
+
+// Add helper method to get staff name from ID
+const getStaffName = (staffId: string) => {
+  const staff = staffList.value.find((s) => s.id === staffId);
+  return staff ? staff.name : 'Unknown';
+};
+
+// Update method signatures with proper types
+const getRemovalMessage = (customer: Customer) => {
+  if (activeTab.value === 'serving') {
+    const staffName = getStaffName(customer.assignedStaff || '');
+    return `Has ${staffName} finished serving ${customer.name}?`;
+  }
+  return `Are you sure you want to remove ${customer.name} from the queue?`;
+};
+
+const onRemove = (customer: Customer) => {
+  customerToRemove.value = customer;
+  showConfirmModal.value = true;
+};
+
+const getCustomerTypeShort = (type: string) => {
+  return type.charAt(0);
+};
+
+const getCategoryClass = (category: string) => {
+  return category?.toLowerCase().replace(/&/g, 'and').replace(/\s+/g, '-') || '';
+};
+
+const getCategoryShort = (category: string) => {
+  const shortcuts: { [key: string]: string } = {
+    'Mobiles & Tablets': 'MOB',
+    'Pre-Paid': 'PRE',
+    Internet: 'INT',
+    Accessories: 'ACS',
+    'Account Help': 'ACT',
+    'Tech Help': 'TEH',
+  };
+  return shortcuts[category] || category;
+};
+
+const getTimeElapsed = (timestamp: string, servedTimestamp: string | null = null) => {
+  if (!timestamp) return '';
+
+  const now = new Date();
+  const time = servedTimestamp ? new Date(servedTimestamp) : new Date(timestamp);
+  const diffInSeconds = Math.floor((now.getTime() - time.getTime()) / 1000);
+
+  const hours = Math.floor(diffInSeconds / 3600);
+  const minutes = Math.floor((diffInSeconds % 3600) / 60);
+
+  let timeString = '';
+  if (hours > 0) {
+    timeString += `${hours}h `;
+  }
+  timeString += `${minutes}m`;
+
+  return timeString;
+};
+
+const showCustomerNotes = (customer: Customer) => {
+  selectedCustomer.value = customer;
+  showViewModal.value = true;
+};
+
+const shouldShowDivider = (index: number) => {
+  if (activeTab.value !== 'waiting') return false;
+
+  const currentCustomer = sortedWaitList.value[index];
+  const nextCustomer = sortedWaitList.value[index + 1];
+
+  return currentCustomer.customerType === 'VIP' && (!nextCustomer || nextCustomer.customerType !== 'VIP');
+};
+
+// Add missing computed with proper types
+const sortedWaitList = computed(() => {
+  return waitList.value
+    .filter((customer) => {
+      if (activeTab.value === 'waiting') {
+        return !customer.assignedStaff;
+      } else {
+        return customer.assignedStaff;
+      }
+    })
+    .sort((a, b) => {
+      if (a.customerType === 'VIP' && b.customerType !== 'VIP') return -1;
+      if (a.customerType !== 'VIP' && b.customerType === 'VIP') return 1;
+      return 0;
+    });
+});
+
+// Add these methods
+const getRemovalTitle = () => {
+  return activeTab.value === 'serving' ? 'Complete Service' : 'Remove Customer';
+};
+
+const toggleContacts = () => {
+  hideContacts.value = !hideContacts.value;
+};
+
+const confirmRemove = async () => {
+  if (customerToRemove.value) {
+    await removeCustomer(customerToRemove.value.id);
+    removeNotificationMessage.value = '✕ Customer removed from queue';
+    showRemoveNotification.value = true;
+    setTimeout(() => {
+      showRemoveNotification.value = false;
+    }, 1500);
+  }
+  showConfirmModal.value = false;
+  customerToRemove.value = null;
+};
+
+const cancelRemove = () => {
+  showConfirmModal.value = false;
+  customerToRemove.value = null;
+};
+
+// Properly type the modalState
+interface ModalState {
+  showModal: boolean;
+  showStaffModal: boolean;
+}
+
+// Get the modal state from the layout with proper typing
+const modalState = inject<Ref<ModalState>>('modalState');
+
+// Watch for changes in the modal state
+watch(
+  () => modalState?.value.showModal,
+  (newValue) => {
+    if (newValue !== undefined) {
+      showModal.value = newValue;
     }
   },
-  methods: {
-    addCustomer(customer) {
-      this.waitList.push({
-        ...customer,
-        timestamp: new Date().toISOString(),
-      });
-      this.showModal = false;
-    },
-    showCustomerNotes(customer) {
-      this.selectedCustomer = customer;
-      this.showViewModal = true;
-    },
-    updateCustomerNotes(newNotes) {
-      if (this.selectedCustomer) {
-        const index = this.waitList.findIndex((c) => c === this.selectedCustomer);
-        if (index !== -1) {
-          this.waitList[index] = {
-            ...this.selectedCustomer,
-            notes: newNotes,
-          };
-        }
-      }
-    },
-    onRemove(customer) {
-      this.customerToRemove = customer;
-      this.showConfirmModal = true;
-    },
-    confirmRemove() {
-      if (this.customerToRemove) {
-        const index = this.waitList.findIndex(
-          (c) => c.name === this.customerToRemove.name && c.timestamp === this.customerToRemove.timestamp
-        );
+  { immediate: true }
+);
 
-        if (index !== -1) {
-          // Reset staff member's status when customer is removed
-          const staffIndex = this.staffList.findIndex((s) => s.name === this.customerToRemove.assignedStaff);
-          if (staffIndex !== -1) {
-            this.staffList[staffIndex] = {
-              ...this.staffList[staffIndex],
-              servingCustomer: null,
-              servingStartTime: null,
-              readyTimestamp: new Date().toISOString(),
-            };
-          }
-
-          this.waitList.splice(index, 1);
-          this.showRemoveNotification = true;
-          setTimeout(() => {
-            this.showRemoveNotification = false;
-          }, 1500);
-        }
-      }
-      this.showConfirmModal = false;
-      this.customerToRemove = null;
-    },
-    cancelRemove() {
-      this.showConfirmModal = false;
-      this.customerToRemove = null;
-    },
-    getCustomerTypeShort(type) {
-      return type.charAt(0);
-    },
-    getTimeElapsed(timestamp, servedTimestamp, showSeconds = false) {
-      if (!timestamp) return '';
-
-      const added = new Date(timestamp);
-      const now = new Date();
-      let diffInSeconds;
-
-      if (servedTimestamp) {
-        // If being served, show time since service started
-        const servedTime = new Date(servedTimestamp);
-        diffInSeconds = Math.floor((now - servedTime) / 1000);
-      } else {
-        // If not being served, show total wait time
-        diffInSeconds = Math.floor((now - added) / 1000);
-      }
-
-      const hours = Math.floor(diffInSeconds / 3600);
-      const minutes = Math.floor((diffInSeconds % 3600) / 60);
-      const seconds = diffInSeconds % 60;
-
-      let timeString = '';
-      if (hours > 0) {
-        timeString += `${hours}h `;
-      }
-      if (minutes > 0 || hours > 0) {
-        timeString += `${minutes}m`;
-      } else {
-        timeString += '0m';
-      }
-
-      if (showSeconds) {
-        timeString += ` ${seconds}s`;
-      }
-
-      return timeString;
-    },
-    getCategoryShort(category) {
-      const shortcuts = {
-        'Mobiles & Tablets': 'MOB',
-        'Pre-Paid': 'PRE',
-        Internet: 'INT',
-        Accessories: 'ACS',
-        'Account Help': 'ACT',
-        'Tech Help': 'TEH',
-      };
-      return shortcuts[category] || category;
-    },
-    getCategoryClass(category) {
-      return category?.toLowerCase().replace(/&/g, 'and').replace(/\s+/g, '-') || '';
-    },
-    addStaffMember(staff) {
-      this.staffList.push({
-        ...staff,
-        servingCustomer: null,
-        servingStartTime: null,
-      });
-    },
-    removeStaffMember(index) {
-      const removedStaff = this.staffList[index].name;
-
-      // Remove staff from list
-      this.staffList.splice(index, 1);
-
-      // Unassign staff from any customers
-      this.waitList.forEach((customer) => {
-        if (customer.assignedStaff === removedStaff) {
-          customer.assignedStaff = null;
-          customer.servedTimestamp = null;
-        }
-      });
-    },
-    assignStaffToCustomer(staffName) {
-      const customerIndex = this.waitList.findIndex((c) => c === this.selectedCustomer);
-      const staffIndex = this.staffList.findIndex((s) => s.name === staffName);
-
-      if (customerIndex !== -1 && staffIndex !== -1) {
-        const now = new Date().toISOString();
-
-        // Update customer
-        this.waitList[customerIndex] = {
-          ...this.waitList[customerIndex],
-          assignedStaff: staffName,
-          servedTimestamp: now,
-        };
-
-        // Update staff member
-        this.staffList[staffIndex] = {
-          ...this.staffList[staffIndex],
-          servingCustomer: this.waitList[customerIndex].name,
-          servingStartTime: now,
-        };
-      }
-    },
-    toggleContacts() {
-      this.hideContacts = !this.hideContacts;
-    },
-    addTestCustomers(customers) {
-      this.waitList.push(...customers);
-    },
-    shouldShowDivider(index) {
-      if (this.activeTab !== 'waiting') return false;
-
-      const currentCustomer = this.sortedWaitList[index];
-      const nextCustomer = this.sortedWaitList[index + 1];
-
-      return currentCustomer.customerType === 'VIP' && (!nextCustomer || nextCustomer.customerType !== 'VIP');
-    },
-    getRemovalMessage(customer) {
-      if (this.activeTab === 'serving') {
-        return `Has ${customer.assignedStaff} finished serving ${customer.name}?`;
-      }
-      return `Are you sure you want to remove ${customer.name} from the queue?`;
-    },
-    getRemovalTitle() {
-      return this.activeTab === 'serving' ? 'Complete Service' : 'Remove Customer';
-    },
-    getColorHex(colorName) {
-      const colorMap = {
-        Red: '#ff4444',
-        Blue: '#4444ff',
-        Green: '#44aa44',
-        Black: '#333333',
-        White: '#ffffff',
-        Yellow: '#ffff44',
-        Pink: '#ff44ff',
-        Purple: '#9944ff',
-        Orange: '#ff8844',
-        Brown: '#8b4513',
-      };
-      return colorMap[colorName] || '#333333';
-    },
-    isLightColor(hex) {
-      const r = parseInt(hex.slice(1, 3), 16);
-      const g = parseInt(hex.slice(3, 5), 16);
-      const b = parseInt(hex.slice(5, 7), 16);
-      const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-      return brightness > 155;
-    },
-    getIconForType(type) {
-      const item = this.clothingTypes.find((i) => i.type === type);
-      return item ? item.icon : 'help_outline';
-    },
+watch(
+  () => modalState?.value.showStaffModal,
+  (newValue) => {
+    if (newValue !== undefined) {
+      showStaffModal.value = newValue;
+    }
   },
+  { immediate: true }
+);
+
+// Update the modal state when local state changes
+watch(showModal, (newValue) => {
+  if (modalState?.value) {
+    modalState.value.showModal = newValue;
+  }
+});
+
+watch(showStaffModal, (newValue) => {
+  if (modalState?.value) {
+    modalState.value.showStaffModal = newValue;
+  }
+});
+
+// Add handlers for modal actions
+const handleAddCustomer = async (customer: Omit<Customer, 'id'>) => {
+  await addCustomer(customer);
+  showModal.value = false;
+};
+
+const handleAddStaff = async (staff: Omit<Staff, 'id'>) => {
+  await addStaffMember(staff);
+  showStaffModal.value = false;
 };
 </script>
-
-<style>
-/* Global styles (no scoped) */
-body {
-  margin: 0;
-  overflow: hidden; /* Prevents browser scrollbar */
-}
-</style>
-
-<style scoped>
-.container {
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 1rem;
-  text-align: center;
-  height: calc(100vh - 80px);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.wait-list-header {
-  font-weight: bold;
-  font-size: 1.5rem;
-  margin: 0;
-}
-
-ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  overflow-y: auto;
-  flex: 1;
-  max-height: calc(100vh - 200px);
-}
-
-ul::-webkit-scrollbar {
-  width: 8px;
-}
-
-ul::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 4px;
-}
-
-ul::-webkit-scrollbar-thumb {
-  background: #888;
-  border-radius: 4px;
-}
-
-ul::-webkit-scrollbar-thumb:hover {
-  background: #555;
-}
-
-.customer-row {
-  display: flex;
-  align-items: center;
-  padding: 8px 1rem;
-  width: calc(100% - 2rem);
-  margin: 0 auto;
-}
-
-.tag-section {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: fit-content;
-}
-
-.customer-details {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-}
-
-.name-and-appearance {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-}
-
-.appearance-tags {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-  margin-top: 2px;
-}
-
-.outfit-tag {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  border-radius: 16px;
-  background: #f5f5f5;
-  font-size: 0.8rem;
-  white-space: nowrap;
-}
-
-.details-section {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 1;
-  margin-left: 4px;
-  cursor: pointer;
-  padding: 8px 12px;
-  border-radius: 4px;
-  transition: background-color 0.2s;
-}
-
-.details-section:hover {
-  background-color: #f0f0f0;
-}
-
-.customer-info {
-  display: flex;
-  align-items: center;
-  font-size: 1.2rem;
-}
-
-.delete-button {
-  background: none;
-  border: none;
-  color: #f96449;
-  cursor: pointer;
-  padding: 2px;
-  display: inline-flex;
-  align-items: center;
-  opacity: 0.7;
-  transition: opacity 0.2s;
-}
-
-.delete-button .material-icons {
-  font-size: 2.25rem;
-}
-
-.delete-button:hover {
-  opacity: 1;
-}
-
-.note-indicator {
-  margin-left: 8px;
-  font-size: 0.9em;
-}
-
-.empty-queue {
-  color: #666;
-  font-style: italic;
-  margin-top: 1rem;
-}
-
-.customer-type-tag,
-.category-tag {
-  cursor: help;
-}
-
-.customer-type-tag {
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 0.9rem;
-  font-weight: bold;
-  margin-right: 8px;
-  min-width: 25px;
-  text-align: center;
-}
-
-.customer-type-tag.vip {
-  background-color: #ffd700;
-  color: #000;
-}
-
-.customer-type-tag.consumer {
-  background-color: #90caf9;
-  color: #000;
-}
-
-.customer-type-tag.business {
-  background-color: #81c784;
-  color: #000;
-}
-
-.category-tag {
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 0.9rem;
-  font-weight: bold;
-  margin-right: 8px;
-  text-align: center;
-}
-
-.category-tag.mobiles-and-tablets {
-  background-color: #e91e63;
-  color: white;
-}
-
-.category-tag.pre-paid {
-  background-color: #9c27b0;
-  color: white;
-}
-
-.category-tag.internet {
-  background-color: #2196f3;
-  color: white;
-}
-
-.category-tag.accessories {
-  background-color: #4caf50;
-  color: white;
-}
-
-.category-tag.account-help {
-  background-color: #ff9800;
-  color: white;
-}
-
-.category-tag.tech-help {
-  background-color: #795548;
-  color: white;
-}
-
-li {
-  margin-bottom: 8px;
-}
-
-li:last-child {
-  margin-bottom: 0;
-}
-
-.time-elapsed-tag {
-  background-color: #f0f0f0;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 0.9rem;
-  color: #666;
-  margin-left: auto;
-  margin-right: 8px;
-}
-
-.assigned-staff {
-  color: #666;
-  font-size: 0.9em;
-  font-style: italic;
-}
-
-.header-section {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-  margin-top: 0.5rem;
-  padding: 0 1rem;
-}
-
-.toggle-button {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 8px 16px;
-  background-color: #f0f0f0;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  height: fit-content;
-}
-
-.toggle-button:hover {
-  background-color: #e0e0e0;
-}
-
-.toggle-button .material-icons {
-  font-size: 1.25rem;
-  display: flex;
-  align-items: center;
-}
-
-.vip-divider {
-  height: 2px;
-  background-color: #ffd700;
-  margin: 1rem 0;
-  opacity: 0.5;
-  width: calc(100% - 2rem);
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.serving-icon {
-  display: inline-flex;
-  align-items: center;
-  margin-right: 4px;
-  color: #2196f3;
-}
-
-.serving-icon .material-icons {
-  font-size: 1.2rem;
-}
-
-.tabs {
-  display: flex;
-  gap: 8px;
-}
-
-.tab-button {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 1.1rem;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: #f0f0f0;
-  color: #666;
-  transition: all 0.2s ease;
-}
-
-.tab-button:hover {
-  background: #e0e0e0;
-}
-
-.tab-button.active {
-  background: #2196f3;
-  color: white;
-}
-
-.tab-button.active .tab-count {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.tab-count {
-  background: rgba(0, 0, 0, 0.1);
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 0.9rem;
-  font-weight: 500;
-}
-
-.customer-row:hover {
-  background-color: transparent;
-}
-
-.appearance-tags {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-  margin-right: 8px;
-  margin-left: -4px;
-}
-
-.appearance-tag {
-  padding: 2px 8px;
-  border-radius: 12px;
-  background: #f0f0f0;
-  font-size: 0.8rem;
-  white-space: nowrap;
-}
-
-.color-tag {
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 0.8rem;
-  color: white;
-  text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
-  white-space: nowrap;
-}
-
-.color-tag[style*='background-color: #ffffff'] {
-  color: #333;
-  text-shadow: none;
-  border: 1px solid #ccc;
-}
-
-.outfit-tag {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  border-radius: 16px;
-  background: #f5f5f5;
-  font-size: 0.8rem;
-  white-space: nowrap;
-}
-
-.outfit-text {
-  color: #333;
-}
-
-.color-swatch {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  display: inline-block;
-  position: relative;
-}
-
-.white-swatch {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  border: 1px solid #ccc;
-  border-radius: 50%;
-}
-</style>

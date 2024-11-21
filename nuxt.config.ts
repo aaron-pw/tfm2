@@ -1,14 +1,19 @@
-const cacheTTL = 60 * 60 * 24 * 365; // 1 year – you can set this to whatever you want
+const cacheTTL = 60 * 60 * 24 * 365;
 
-// https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   devtools: { enabled: true },
   app: {
     head: {
-      link: [{ rel: 'icon', href: '/favicon.ico' }],
+      link: [
+        { rel: 'icon', href: '/favicon.ico' },
+        {
+          rel: 'stylesheet',
+          href: 'https://fonts.googleapis.com/icon?family=Material+Icons',
+        },
+      ],
     },
   },
-  css: ['@/assets/scss/main.scss'],
+  css: ['@/assets/main.css'],
   nitro: {
     compressPublicAssets: true,
     routeRules: {
@@ -16,18 +21,21 @@ export default defineNuxtConfig({
       '/_nuxt/**': { headers: { 'cache-control': `public,max-age=${cacheTTL},s-maxage=${cacheTTL}` } },
     },
   },
-  modules: ['@nuxtjs/google-fonts', '@nuxtjs/seo', '@nuxtjs/tailwindcss', '@nuxt/eslint', 'nuxt-icon', '@vueuse/nuxt'],
-  googleFonts: {
-    // https://google-fonts.nuxtjs.org/getting-started/options
-    families: {
-      Inter: [100, 300, 400, 500, 600, 700],
+  modules: ['@nuxtjs/supabase'],
+  supabase: {
+    url: process.env.NUXT_PUBLIC_SUPABASE_URL,
+    key: process.env.NUXT_PUBLIC_SUPABASE_KEY,
+    redirect: false,
+    redirectOptions: {
+      login: '/login',
+      callback: '/confirm',
+    },
+    cookieOptions: {
+      maxAge: 60 * 60 * 8,
+      secure: true,
     },
   },
-  site: {
-    // https://nuxtseo.com/
-    url: 'https://example.com', // TODO: Your site's URL
-    name: 'Welcome to Nuxt', // TODO: Your site's default meta title
-    description: 'My awesome Nuxt project', // TODO: Your site's default meta description
-    defaultLocale: 'en', // TODO: HTML lang attribute value
+  typescript: {
+    strict: true,
   },
 });
