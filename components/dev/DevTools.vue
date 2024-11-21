@@ -29,13 +29,18 @@ export default {
         const category = categories[Math.floor(Math.random() * categories.length)];
         const phone = `04${Math.floor(Math.random() * 100000000).toString().padStart(8, '0')}`;
         
+        const now = new Date();
+        const randomTime = new Date(now - Math.random() * 24 * 60 * 60 * 1000);
+        
         testCustomers.push({
           name: `${firstName} ${lastName}`,
           contact: phone,
           customerType: customerType,
           category: category,
-          timestamp: new Date().toISOString(),
-          notes: ''
+          timestamp: randomTime.toISOString(),
+          notes: '',
+          assignedStaff: null,
+          servedTimestamp: null
         });
       }
       

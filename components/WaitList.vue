@@ -67,7 +67,12 @@
                 </span>
               </span>
               <span class="time-elapsed-tag">
-                {{ getTimeElapsed(queue.timestamp) }}
+                <template v-if="queue.assignedStaff">
+                  Serving: {{ getTimeElapsed(queue.timestamp, queue.servedTimestamp) }}
+                </template>
+                <template v-else>
+                  Waiting: {{ getTimeElapsed(queue.timestamp) }}
+                </template>
               </span>
               <button class="delete-button" @click.stop="onRemove(queue)">
                 <span class="material-icons">remove_circle</span>
@@ -170,12 +175,21 @@ export default {
     getCustomerTypeShort(type) {
       return type.charAt(0);
     },
-    getTimeElapsed(timestamp) {
+    getTimeElapsed(timestamp, servedTimestamp) {
       if (!timestamp) return '';
       
       const added = new Date(timestamp);
       const now = new Date();
-      const diffInSeconds = Math.floor((now - added) / 1000);
+      let diffInSeconds;
+      
+      if (servedTimestamp) {
+        // If being served, show time since service started
+        const servedTime = new Date(servedTimestamp);
+        diffInSeconds = Math.floor((now - servedTime) / 1000);
+      } else {
+        // If not being served, show total wait time
+        diffInSeconds = Math.floor((now - added) / 1000);
+      }
       
       const hours = Math.floor(diffInSeconds / 3600);
       const minutes = Math.floor((diffInSeconds % 3600) / 60);
@@ -230,7 +244,8 @@ export default {
       if (customerIndex !== -1) {
         this.waitList[customerIndex] = {
           ...this.waitList[customerIndex],
-          assignedStaff: staffName
+          assignedStaff: staffName,
+          servedTimestamp: staffName ? new Date().toISOString() : null
         }
       }
     },
