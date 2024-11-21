@@ -30,16 +30,27 @@
                   <span class="material-icons staff-icon">person</span>
                   <span class="staff-name">{{ staff.name }}</span>
                 </div>
-                <div class="staff-time" :class="{ serving: staff.serving_customer }">
-                  <template v-if="staff.serving_customer">
-                    Serving: {{ getCustomerName(staff.serving_customer) }}
-                    <span class="serving-time">{{ getTimeElapsed(staff.serving_start_time) }}</span>
+                <div class="staff-time" :class="{ serving: staff.servingCustomer, lunch: staff.onLunch }">
+                  <template v-if="staff.servingCustomer">
+                    Serving: {{ getCustomerName(staff.servingCustomer) }}
+                    <span class="serving-time">{{ getTimeElapsed(staff.servingStartTime) }}</span>
                   </template>
-                  <template v-else> Ready: {{ getTimeElapsed(staff.ready_timestamp) }} </template>
+                  <template v-else-if="staff.onLunch"> On Break: {{ getTimeElapsed(staff.lunchStartTime) }} </template>
+                  <template v-else> Ready: {{ getTimeElapsed(staff.readyTimestamp) }} </template>
                 </div>
-                <button class="delete-button" @click="confirmStaffRemoval(staff)">
-                  <span class="material-icons">remove_circle</span>
-                </button>
+                <div class="staff-actions">
+                  <button
+                    class="action-button lunch-button"
+                    :title="staff.onLunch ? 'End Break' : 'Start Break'"
+                    :disabled="staff.servingCustomer"
+                    @click="toggleLunchBreak(staff)"
+                  >
+                    <span class="material-icons" :class="{ 'on-lunch': staff.onLunch }">local_cafe</span>
+                  </button>
+                  <button class="delete-button" @click="confirmStaffRemoval(staff)">
+                    <span class="material-icons">remove_circle</span>
+                  </button>
+                </div>
               </div>
             </div>
             <div v-else class="empty-state">No staff members added yet</div>
@@ -61,7 +72,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onMounted, onUnmounted, ref, watch } from 'vue';
 import { useQueue } from '~/composables/useQueue';
 import type { Staff } from '~/types';
 import ConfirmModal from './ConfirmModal.vue';
@@ -77,6 +88,7 @@ const emit = defineEmits<{
   close: [];
   'add-staff': [staff: Omit<Staff, 'id'>];
   'remove-staff': [staffId: string];
+  'toggle-lunch': [staffId: string];
 }>();
 
 const newStaffName = ref('');
@@ -85,15 +97,14 @@ const showNotification = ref(false);
 const timer = ref<NodeJS.Timer | null>(null);
 const showConfirmModal = ref(false);
 const staffToRemove = ref<Staff | null>(null);
+const updateTimestamps = ref(0);
 
 const startTimer = () => {
   timer.value = setInterval(() => {
-    // Force a re-render to update timestamps
     if (props.isOpen) {
-      // Using nextTick to avoid Vue warnings
-      nextTick(() => {});
+      updateTimestamps.value++;
     }
-  }, 30000); // Update every 30 seconds
+  }, 1000);
 };
 
 const stopTimer = () => {
@@ -180,6 +191,8 @@ const getCustomerName = (customerId: string) => {
 };
 
 const getTimeElapsed = (timestamp: string | null) => {
+  const _ = updateTimestamps.value;
+
   if (!timestamp) return '0m';
 
   const now = new Date();
@@ -196,6 +209,14 @@ const getTimeElapsed = (timestamp: string | null) => {
   timeString += `${minutes}m`;
 
   return timeString;
+};
+
+const toggleLunchBreak = (staff: Staff) => {
+  if (staff.serving_customer) {
+    // If staff is serving someone, don't allow lunch break
+    return;
+  }
+  emit('toggle-lunch', staff.id);
 };
 </script>
 
@@ -282,9 +303,12 @@ const getTimeElapsed = (timestamp: string | null) => {
   border: none;
   color: #f96449;
   cursor: pointer;
-  padding: 4px;
+  padding: 0;
   opacity: 0.7;
   transition: opacity 0.2s;
+  width: 20px;
+  display: flex;
+  justify-content: center;
 }
 
 .delete-button:hover {
@@ -384,8 +408,54 @@ input.error {
   font-weight: 500;
 }
 
+.staff-time.lunch {
+  background: #fff3e0;
+  color: #ff9800;
+  font-weight: 500;
+}
+
 .serving-time {
   font-size: 0.8em;
   opacity: 0.8;
+}
+
+.staff-actions {
+  display: flex;
+  align-items: center;
+  margin-left: 2px;
+}
+
+.action-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  opacity: 0.7;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  width: 20px;
+  justify-content: center;
+}
+
+.lunch-button {
+  color: #795548;
+  margin-right: -40px;
+  margin-left: -10px;
+}
+
+.lunch-button:hover {
+  opacity: 1;
+}
+
+.lunch-button .on-lunch {
+  color: #ff9800;
+  transform: rotate(15deg);
+  transition: transform 0.3s ease;
+}
+
+.lunch-button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 </style>

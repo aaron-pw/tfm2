@@ -18,6 +18,7 @@
         @close="showStaffModal = false"
         @add-staff="handleAddStaff"
         @remove-staff="handleStaffRemoval"
+        @toggle-lunch="handleToggleLunch"
       />
       <ConfirmModal
         :is-open="showConfirmModal"
@@ -137,6 +138,7 @@ const {
   removeStaffMember,
   assignStaffToCustomer,
   updateCustomerNotes: updateNotes,
+  toggleStaffLunch,
 } = useQueue();
 
 // Add missing state with proper types
@@ -376,5 +378,14 @@ const handleAddCustomer = async (customer: Omit<Customer, 'id'>) => {
 const handleAddStaff = async (staff: Omit<Staff, 'id'>) => {
   await addStaffMember(staff);
   showStaffModal.value = false;
+};
+
+// Add handler for lunch toggle
+const handleToggleLunch = async (staffId: string) => {
+  try {
+    await toggleStaffLunch(staffId);
+  } catch (error) {
+    console.error('Error toggling staff lunch break:', error);
+  }
 };
 </script>

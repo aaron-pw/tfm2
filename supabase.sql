@@ -10,7 +10,9 @@ create table public.staff (
   name text not null,
   ready_timestamp timestamptz not null default now(),
   serving_customer uuid,
-  serving_start_time timestamptz
+  serving_start_time timestamptz,
+  on_lunch boolean default false,
+  lunch_start_time timestamptz
 );
 
 -- Create customers table

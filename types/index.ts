@@ -23,4 +23,6 @@ export interface Staff {
   readyTimestamp: string;
   servingCustomer: string | null;
   servingStartTime: string | null;
+  onLunch?: boolean;
+  lunchStartTime?: string | null;
 }

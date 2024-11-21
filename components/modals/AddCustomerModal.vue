@@ -48,7 +48,11 @@
                 v-model="contact"
                 name="contact"
                 type="tel"
+                maxlength="10"
+                pattern="[0-9]*"
+                inputmode="numeric"
                 :class="{ error: showError && !contact }"
+                @input="validateContactNumber"
               />
               <span v-if="showError && !contact" class="error-message"> Please enter a contact number </span>
             </div>
@@ -166,6 +170,7 @@ export default {
       if (
         !this.customer ||
         !this.contact ||
+        this.contact.length !== 10 ||
         !this.customerType ||
         !this.category ||
         this.selectedOutfits.length === 0
@@ -224,6 +229,25 @@ export default {
       const b = parseInt(c.substring(4, 6), 16);
       const brightness = (r * 299 + g * 587 + b * 114) / 1000;
       return brightness > 127.5;
+    },
+    validateContactNumber(event) {
+      // Remove any non-digit characters
+      const value = event.target.value.replace(/\D/g, '');
+
+      // Update the input value with only digits, max 10
+      event.target.value = value.slice(0, 10);
+
+      // Update v-model
+      this.contact = event.target.value;
+
+      // Add validation for exactly 10 digits
+      if (this.contact.length !== 10) {
+        this.showError = true;
+        this.$el.querySelector('#contact').classList.add('error');
+      } else {
+        this.showError = false;
+        this.$el.querySelector('#contact').classList.remove('error');
+      }
     },
   },
 };

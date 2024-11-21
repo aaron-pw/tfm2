@@ -28,6 +28,8 @@ interface DatabaseStaff {
   ready_timestamp: string;
   serving_customer: string | null;
   serving_start_time: string | null;
+  on_lunch: boolean;
+  lunch_start_time: string | null;
 }
 
 // Create a singleton instance
@@ -75,6 +77,8 @@ export const useQueue = () => {
           readyTimestamp: payload.new.ready_timestamp,
           servingCustomer: payload.new.serving_customer,
           servingStartTime: payload.new.serving_start_time,
+          onLunch: payload.new.on_lunch,
+          lunchStartTime: payload.new.lunch_start_time,
         };
         staffList.value = [...staffList.value, transformedStaff];
       }
@@ -97,14 +101,33 @@ export const useQueue = () => {
         );
       }
     } else if (payload.eventType === 'UPDATE') {
-      const transformedStaff: Staff = {
-        id: payload.new.id,
-        name: payload.new.name,
-        readyTimestamp: payload.new.ready_timestamp,
-        servingCustomer: payload.new.serving_customer,
-        servingStartTime: payload.new.serving_start_time,
-      };
-      staffList.value = staffList.value.map((s) => (s.id === payload.new.id ? transformedStaff : s));
+      // Get the latest data to ensure we have all relationships
+      const { data: staff } = await supabase
+        .from('staff')
+        .select(
+          `
+          *,
+          customers!customers_assigned_staff_fkey (
+            id,
+            name
+          )
+        `
+        )
+        .eq('id', payload.new.id)
+        .single();
+
+      if (staff) {
+        const transformedStaff: Staff = {
+          id: staff.id,
+          name: staff.name,
+          readyTimestamp: staff.ready_timestamp,
+          servingCustomer: staff.serving_customer,
+          servingStartTime: staff.serving_start_time,
+          onLunch: staff.on_lunch,
+          lunchStartTime: staff.lunch_start_time,
+        };
+        staffList.value = staffList.value.map((s) => (s.id === staff.id ? transformedStaff : s));
+      }
     }
   };
 
@@ -197,22 +220,26 @@ export const useQueue = () => {
           ready_timestamp: timestamp,
           serving_customer: null,
           serving_start_time: null,
+          on_lunch: false,
+          lunch_start_time: null,
         })
         .select()
         .single();
 
       if (error) throw error;
 
-      // Add immediate local update
+      // Transform the data for local state
       const transformedStaff: Staff = {
         id: data.id,
         name: data.name,
         readyTimestamp: data.ready_timestamp,
         servingCustomer: data.serving_customer,
         servingStartTime: data.serving_start_time,
+        onLunch: data.on_lunch,
+        lunchStartTime: data.lunch_start_time,
       };
-      staffList.value = [...staffList.value, transformedStaff];
 
+      staffList.value = [...staffList.value, transformedStaff];
       return data;
     } catch (error) {
       console.error('Error adding staff member:', error);
@@ -222,8 +249,32 @@ export const useQueue = () => {
 
   const removeStaffMember = async (staffId: string) => {
     try {
+      // Update local state first for immediate feedback
+      staffList.value = staffList.value.filter((s) => s.id !== staffId);
+
       const { error } = await supabase.from('staff').delete().eq('id', staffId);
-      if (error) throw error;
+      if (error) {
+        // Revert local state if database update fails
+        await fetchInitialData();
+        throw error;
+      }
+
+      // Get any customers assigned to this staff member
+      const { data: customers } = await supabase.from('customers').select('*').eq('assigned_staff', staffId);
+
+      if (customers) {
+        await Promise.all(
+          customers.map(async (customer) => {
+            await supabase
+              .from('customers')
+              .update({
+                assigned_staff: null,
+                served_timestamp: null,
+              })
+              .eq('id', customer.id);
+          })
+        );
+      }
     } catch (error) {
       console.error('Error removing staff member:', error);
       throw error;
@@ -277,13 +328,23 @@ export const useQueue = () => {
   const fetchInitialData = async () => {
     try {
       const { data: customers } = await supabase.from('customers').select('*').order('timestamp', { ascending: true });
+
       const { data: staff } = await supabase.from('staff').select('*');
 
       if (customers) {
         waitList.value = customers.map(transformDatabaseCustomer);
       }
       if (staff) {
-        staffList.value = staff;
+        // Transform staff data preserving lunch status
+        staffList.value = staff.map((s) => ({
+          id: s.id,
+          name: s.name,
+          readyTimestamp: s.ready_timestamp,
+          servingCustomer: s.serving_customer,
+          servingStartTime: s.serving_start_time,
+          onLunch: s.on_lunch,
+          lunchStartTime: s.lunch_start_time,
+        }));
       }
     } catch (error) {
       console.error('Error fetching initial data:', error);
@@ -320,6 +381,41 @@ export const useQueue = () => {
     }
   };
 
+  const toggleStaffLunch = async (staffId: string) => {
+    try {
+      const staff = staffList.value.find((s) => s.id === staffId);
+      if (!staff) return;
+
+      const timestamp = new Date().toISOString();
+      const { error } = await supabase
+        .from('staff')
+        .update({
+          on_lunch: !staff.onLunch,
+          lunch_start_time: !staff.onLunch ? timestamp : null,
+          ready_timestamp: staff.onLunch ? timestamp : staff.readyTimestamp,
+          serving_customer: null,
+          serving_start_time: null,
+        })
+        .eq('id', staffId);
+
+      if (error) throw error;
+
+      // If staff was serving someone, update the customer
+      if (staff.servingCustomer) {
+        await supabase
+          .from('customers')
+          .update({
+            assigned_staff: null,
+            served_timestamp: null,
+          })
+          .eq('id', staff.servingCustomer);
+      }
+    } catch (error) {
+      console.error('Error toggling staff lunch break:', error);
+      throw error;
+    }
+  };
+
   init();
 
   onMounted(async () => {
@@ -347,5 +443,6 @@ export const useQueue = () => {
     removeStaffMember,
     assignStaffToCustomer,
     updateCustomerNotes,
+    toggleStaffLunch,
   };
 };
